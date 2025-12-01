@@ -41,30 +41,43 @@
     <!-- Common deps for CloudPath & DirectPath-->
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>1.77.0</version>
       <artifactId>grpc-api</artifactId>
     </dependency>
     <dependency>
+      <version>1.77.0</version>
+
       <groupId>io.grpc</groupId>
       <artifactId>grpc-core</artifactId>
     </dependency>
     <dependency>
+      <version>1.77.0</version>
+
       <groupId>io.grpc</groupId>
       <artifactId>grpc-auth</artifactId>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>1.77.0</version>
+
       <artifactId>grpc-netty-shaded</artifactId>
     </dependency>
     <dependency>
+      <version>1.77.0</version>
+
       <groupId>io.grpc</groupId>
       <artifactId>grpc-alts</artifactId>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>1.77.0</version>
+
       <artifactId>grpc-protobuf</artifactId>
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
+      <version>1.77.0</version>
+
       <artifactId>grpc-stub</artifactId>
     </dependency>
 
@@ -94,14 +107,20 @@
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-rls</artifactId>
+      <version>1.77.0</version>
+
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-xds</artifactId>
+      <version>1.77.0</version>
+
     </dependency>
     <dependency>
       <groupId>io.grpc</groupId>
       <artifactId>grpc-googleapis</artifactId>
+      <version>1.77.0</version>
+
     </dependency>
   </dependencies>
 </project>

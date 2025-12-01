@@ -107,8 +107,6 @@ public class Repro {
                         .withInterceptors(interceptor)
                         .withDeadlineAfter(60, TimeUnit.SECONDS);
 
-                BigtableBlockingStub timedStub = stub.withDeadlineAfter(CALL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
 
                 LOG.info("About to send Request on channel " + i);
                 try {
