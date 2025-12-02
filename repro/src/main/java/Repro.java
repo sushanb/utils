@@ -97,7 +97,7 @@ public class Repro {
 
         List<ManagedChannel> channels = new ArrayList<>();
         try {
-            for (int i = 0; i < 2; i++) {
+            for (int i = 0; i < 10; i++) {
                 LOG.info("Creating channel " + i);
                 ManagedChannel channel = Grpc.newChannelBuilder(target, channelCredentials).build();
                 channels.add(channel);
