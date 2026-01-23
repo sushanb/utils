@@ -59,10 +59,6 @@ public class SingleChannelCaller {
 
     ChannelCredentials channelCredentials = GoogleDefaultChannelCredentials.create();
 
-    // Common to DirectPath & CloudPath
-    CallCredentials callCredentials =
-        MoreCallCredentials.from(GoogleCredentials.getApplicationDefault());
-
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     FeatureFlags featureFlags =
         FeatureFlags.newBuilder()
@@ -127,7 +123,6 @@ public class SingleChannelCaller {
     try {
       BigtableBlockingStub stub =
           BigtableGrpc.newBlockingStub(channel)
-              .withCallCredentials(callCredentials)
               .withInterceptors(interceptor)
               .withDeadlineAfter(60, TimeUnit.SECONDS);
 
