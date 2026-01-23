@@ -1,10 +1,8 @@
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.bigtable.v2.BigtableGrpc;
 import com.google.bigtable.v2.BigtableGrpc.BigtableBlockingStub;
 import com.google.bigtable.v2.FeatureFlags;
 import com.google.bigtable.v2.ReadRowsRequest;
 import com.google.bigtable.v2.ReadRowsResponse;
-import io.grpc.CallCredentials;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ChannelCredentials;
@@ -19,7 +17,6 @@ import io.grpc.Metadata.Key;
 import io.grpc.MethodDescriptor;
 import io.grpc.alts.AltsContextUtil;
 import io.grpc.alts.GoogleDefaultChannelCredentials;
-import io.grpc.auth.MoreCallCredentials;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -30,12 +27,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
- * mvn compile exec:java -Dexec.mainClass=SingleChannelCaller \
- * -Dbigtable.project="" \
- * -Dbigtable.instance="" \
- * -Dbigtable.table=""
+ * mvn compile exec:java -Dexec.mainClass=SingleChannelCaller \ -Dbigtable.project="" \
+ * -Dbigtable.instance="" \ -Dbigtable.table=""
  */
-
 public class SingleChannelCaller {
   private static final Logger LOG = Logger.getLogger(SingleChannelCaller.class.getName());
 

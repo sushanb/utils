@@ -14,6 +14,7 @@ import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.alts.GoogleDefaultChannelCredentials;
+import io.grpc.lookup.v1.RouteLookupClusterSpecifier;
 import io.grpc.stub.StreamObserver;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +71,7 @@ public class TrafficDirectorAccess {
                         .add(HttpConnectionManager.getDescriptor())
                         .add(Router.getDescriptor())
                         .add(HTTPFault.getDescriptor())
+                        .add(RouteLookupClusterSpecifier.getDescriptor())
                         .build();
 
                 JsonFormat.Printer printer =

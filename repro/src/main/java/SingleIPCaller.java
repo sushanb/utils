@@ -15,14 +15,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
- * mvn compile exec:java -Dexec.mainClass=SingleChannelCaller \
- * -Dbigtable.project="" \
- * -Dbigtable.instance="" \
- * -Dbigtable.table="" \
- * -Dbigtable.host="" \
- * -Dbigtable.port="" \
- **/
-
+ * mvn compile exec:java -Dexec.mainClass=SingleChannelCaller \ -Dbigtable.project="" \
+ * -Dbigtable.instance="" \ -Dbigtable.table="" \ -Dbigtable.host="" \ -Dbigtable.port="" \
+ */
 public class SingleIPCaller {
   private static final Logger LOG = Logger.getLogger(SingleIPCaller.class.getName());
 

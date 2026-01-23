@@ -45,7 +45,7 @@ public class Repro {
     String TABLE_NAME =
         String.format("projects/%s/instances/%s/tables/%s", projectId, instanceId, tableId);
 
-    String host = "test-bigtable.sandbox.googleapis.com";
+    String host = "bigtable.googleapis.com";
 
     // DirectPath specific
     String target = "google-c2p:///" + host;
@@ -93,7 +93,7 @@ public class Repro {
 
     List<ManagedChannel> channels = new ArrayList<>();
     try {
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 1; i++) {
         LOG.info("Creating channel " + i);
         ManagedChannel channel = Grpc.newChannelBuilder(target, channelCredentials).build();
         channels.add(channel);
