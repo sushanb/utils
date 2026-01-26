@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="generator-2.65.1-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/target/generator-2.65.1-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
