@@ -35,7 +35,7 @@ public class SimpleTest {
 
   public static BigtableDataClient createClient() throws IOException {
     BigtableDataSettings.Builder settingsBuilder =
-        BigtableDataSettings.newBuilder().setProjectId("autonomous-mote-782").setInstanceId("test-sushanb");
+        BigtableDataSettings.newBuilder().setProjectId("").setInstanceId("");
 
 
     settingsBuilder
