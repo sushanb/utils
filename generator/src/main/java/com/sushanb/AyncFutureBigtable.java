@@ -117,7 +117,7 @@ public class AyncFutureBigtable {
 
             // Sleep briefly to prevent the dummy app from exiting before the async callback fires
             try {
-                Thread.sleep(Duration.ofMinutes(5).toMillis());
+                Thread.sleep(Duration.ofMinutes(2).toMillis());
                 // Feature Request: Log when the thread sleep finishes naturally
                 logger.info("MAIN_TIMEOUT: Main thread completed its 5-minute sleep. The dummy application will now exit.");
             } catch (InterruptedException e) {
