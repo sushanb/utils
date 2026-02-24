@@ -100,8 +100,6 @@ public class AyncFutureBigtable {
                 }
             } else if (row != null) {
                 logger.info("Successfully read row! Key: " + row.getKey().toStringUtf8());
-            } else {
-                logger.info("Row not found.");
             }
         });
 
