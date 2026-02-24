@@ -18,6 +18,7 @@ package com.sushanb;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutureCallback;
 import com.google.api.core.ApiFutures;
+import com.google.api.gax.retrying.RetrySettings;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
 import com.google.cloud.bigtable.data.v2.models.Filters;
@@ -26,7 +27,7 @@ import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.bigtable.data.v2.models.TableId;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
-
+import org.threeten.bp.Duration;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
@@ -38,6 +39,15 @@ public class AyncFutureBigtable {
         BigtableDataSettings.Builder settingsBuilder =
                 BigtableDataSettings.newBuilder().setProjectId("autonomous-mote-782").setInstanceId("test-sushanb");
 
+        // Set a 1-minute total timeout for all readRow operations
+        Duration timeout = Duration.ofSeconds(60);
+        RetrySettings retrySettings = settingsBuilder.stubSettings().readRowSettings().getRetrySettings()
+                .toBuilder()
+                .setTotalTimeout(timeout)
+                .setMaxRpcTimeout(timeout) // Limits the timeout of individual retry attempts to 1m as well
+                .build();
+
+        settingsBuilder.stubSettings().readRowSettings().setRetrySettings(retrySettings);
 
         settingsBuilder
                 .stubSettings()
@@ -82,9 +92,16 @@ public class AyncFutureBigtable {
         // 4. Attach the final CompletableFuture callback
         completableFuture.whenComplete((row, throwable) -> {
             if (throwable != null) {
-                logger.severe("Failed to read row: " + throwable.getMessage());
+                // Feature Request: Check if it's a Bigtable/RPC timeout
+                if (throwable.getMessage() != null && throwable.getMessage().contains("DEADLINE_EXCEEDED")) {
+                    logger.severe("READ_TIMEOUT: Bigtable readRow operation timed out after the configured 60 seconds.");
+                } else {
+                    logger.severe("API_ERROR: Failed to read row due to another error: " + throwable.getMessage());
+                }
             } else if (row != null) {
                 logger.info("Successfully read row! Key: " + row.getKey().toStringUtf8());
+            } else {
+                logger.info("Row not found.");
             }
         });
 
@@ -101,10 +118,17 @@ public class AyncFutureBigtable {
             performAsyncFuture(client, tableId, rowKey);
 
             // Sleep briefly to prevent the dummy app from exiting before the async callback fires
-            Thread.sleep(3000);
+            try {
+                Thread.sleep(Duration.ofMinutes(5).toMillis());
+                // Feature Request: Log when the thread sleep finishes naturally
+                logger.info("MAIN_TIMEOUT: Main thread completed its 5-minute sleep. The dummy application will now exit.");
+            } catch (InterruptedException e) {
+                logger.warning("MAIN_INTERRUPTED: Main thread sleep was interrupted prematurely.");
+                Thread.currentThread().interrupt(); // Restore interrupted status
+            }
 
         } catch (Exception e) {
-            logger.severe("Application encountered an error: " + e.getMessage());
+            logger.severe("Application encountered a top-level error: " + e.getMessage());
         }
     }
 }
