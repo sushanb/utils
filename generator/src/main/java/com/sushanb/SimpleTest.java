@@ -35,7 +35,7 @@ public class SimpleTest {
 
   public static BigtableDataClient createClient() throws IOException {
     BigtableDataSettings.Builder settingsBuilder =
-        BigtableDataSettings.newBuilder().setProjectId("").setInstanceId("");
+        BigtableDataSettings.newBuilder().setProjectId("autonomous-mote-782").setInstanceId("test-sushanb");
 
 
     settingsBuilder
@@ -58,7 +58,7 @@ public class SimpleTest {
             String.format(
                     "Submitting %d mutations to a thread pool of size %d", 10000, 10));
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1000; i++) {
       final int index = i;
       executorService.submit(
               () -> {
@@ -67,6 +67,8 @@ public class SimpleTest {
                   RowMutation rowMutation =
                           RowMutation.create(TABLE_NAME, rowKey).setCell("cf12", "colq1", "val" + index);
                   client.mutateRow(rowMutation);
+                  logger.info("Sleeping..");
+                  Thread.sleep(1000);
                   successCount.incrementAndGet();
                   if (index % 100 == 0) {
                     logger.info("Successfully mutated index: " + index);
