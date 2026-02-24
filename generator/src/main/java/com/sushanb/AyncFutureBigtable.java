@@ -85,9 +85,6 @@ public class AyncFutureBigtable {
                 logger.severe("Failed to read row: " + throwable.getMessage());
             } else if (row != null) {
                 logger.info("Successfully read row! Key: " + row.getKey().toStringUtf8());
-                // Add your logic to iterate over row.getCells() here
-            } else {
-                logger.info("Row not found.");
             }
         });
 
