@@ -5,112 +5,205 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"runtime"
+	"net"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
+	"strconv"
+	"sync"
+	"sync/atomic"
 	"time"
 
-	"net/http"
-	_ "net/http/pprof" // Required to register pprof handlers on the default mux
-
 	"cloud.google.com/go/bigtable"
+	channelz "github.com/rantav/go-grpc-channelz"
+	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	channelzservice "google.golang.org/grpc/channelz/service"
 )
 
 const (
-	sleepSeconds     = 10
-	defaultPprofPort = 6060 // Standard port for pprof
-	// This struct is ~100 bytes (8+8+8+8+64), so 100,000 instances is ~10MB per tick.
-	ALLOCATION_COUNT = 100000
+	overallRequestDuration = 10 * time.Second
 )
 
-// Data structure to hold in memory
-type HeapObject struct {
-	ID        uint64
-	Timestamp int64
-	Value     float64
-	Padding   [64]byte // Use padding to ensure size is easily visible
+// Use atomic counters instead of logging every request
+var (
+	successCount uint64
+	errorCount   uint64
+	timeoutCount uint64
+	rowCounter   uint64 // Fast, lock-free counter for unique row keys
+)
+
+func delegatorPingAndWarm(ctx context.Context, client *bigtable.Client) error {
+	return client.PingAndWarm(ctx)
 }
 
-// Global slice to intentionally hold the allocated memory, preventing garbage collection.
-var memoryHog = make([]HeapObject, 0)
+func delegatorMutateRow(ctx context.Context, tbl bigtable.TableAPI) error {
+	// Generate a highly random, collision-free row key without blocking on math/rand locks
+	// Format: "row-<timestamp>-<atomic_increment>"
+	rowKey := fmt.Sprintf("row-%d-%d", time.Now().UnixNano(), atomic.AddUint64(&rowCounter, 1))
+
+	mut := bigtable.NewMutation()
+	// Set data in column family "cf", column "col1"
+	mut.Set("cf", "col1", bigtable.Now(), []byte("load-test-data"))
+
+	return tbl.Apply(ctx, rowKey, mut)
+}
+
+func runWorkload(ctx context.Context, client *bigtable.Client, tbl bigtable.TableAPI, cbtOp string) {
+	reqCtx, reqCancel := context.WithTimeout(ctx, overallRequestDuration)
+	defer reqCancel()
+
+	// Run the request synchronously within the worker goroutine
+	// to avoid massive goroutine churn and channel allocations.
+	errChan := make(chan error, 1)
+	go func() {
+		if cbtOp == "Mutate" {
+			errChan <- delegatorMutateRow(reqCtx, tbl)
+		} else {
+			errChan <- delegatorPingAndWarm(reqCtx, client)
+		}
+	}()
+
+	select {
+	case err := <-errChan:
+		if err != nil {
+			atomic.AddUint64(&errorCount, 1)
+		} else {
+			atomic.AddUint64(&successCount, 1)
+		}
+	case <-reqCtx.Done():
+		atomic.AddUint64(&timeoutCount, 1)
+	}
+}
 
 func main() {
-
 	var (
 		projectIDPtr  = flag.String("project", "", "Your Google Cloud Project ID (required)")
 		instanceIDPtr = flag.String("instance", "", "Your Bigtable Instance ID (required)")
-		pprofPortPtr  = flag.Int("pprof-port", defaultPprofPort, "The port for the pprof HTTP server")
+		pprofPortPtr  = flag.Int("pprof-port", 6060, "The port for the pprof HTTP server")
 	)
 
-	// 2. Parse the flags
 	flag.Parse()
 
-	// 3. Validate required flags
 	if *projectIDPtr == "" || *instanceIDPtr == "" {
 		fmt.Println("Error: All project, instance are required.")
-		flag.Usage() // Print usage instructions
+		flag.Usage()
 		return
 	}
-	// Assign flag values to local variables for cleaner use
+
 	projectID := *projectIDPtr
 	instanceID := *instanceIDPtr
 	pprofAddr := fmt.Sprintf(":%d", *pprofPortPtr)
+	env := os.Getenv("CBT_ENV_VAR")
 
-	runtime.SetBlockProfileRate(1)
-	runtime.SetCPUProfileRate(1)
-	runtime.SetMutexProfileFraction(1)
+	cbtOp := os.Getenv("CBT_OP")
+	if cbtOp == "" {
+		cbtOp = "PingAndWarm" // Default fallback
+	}
 
-	// 4. Start pprof HTTP server in a goroutine
+	// Parse TARGET_RPS from environment variables
+	targetRPS := 100 // Default fallback
+	if envRPS := os.Getenv("TARGET_QPS"); envRPS != "" {
+		if parsedRPS, err := strconv.Atoi(envRPS); err == nil && parsedRPS > 0 {
+			targetRPS = parsedRPS
+		} else {
+			log.Printf("Warning: Invalid TARGET_RPS value '%s', falling back to default %d", envRPS, targetRPS)
+		}
+	}
+
+	// --- NEW: Parse NUM_WORKERS from environment variables ---
+	numWorkers := 50 // Default fallback
+	if envWorkers := os.Getenv("NUM_WORKERS"); envWorkers != "" {
+		if parsedWorkers, err := strconv.Atoi(envWorkers); err == nil && parsedWorkers > 0 {
+			numWorkers = parsedWorkers
+		} else {
+			log.Printf("Warning: Invalid NUM_WORKERS value '%s', falling back to default %d", envWorkers, numWorkers)
+		}
+	}
+
 	go func() {
 		log.Printf("Starting pprof server on http://localhost%s/debug/pprof/", pprofAddr)
-		// The imported _ "net/http/pprof" registers the profiling handlers
-		// on the default HTTP mux. Passing nil uses this default mux.
 		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
-			// Note: This error only happens if the server fails to start (e.g., port in use)
 			log.Printf("pprof server failed: %v", err)
 		}
 	}()
 
-	// Create a context
+	go func() {
+		grpcServer := grpc.NewServer()
+		http.Handle("/", channelz.CreateHandler("/", ":8001"))
+		channelzservice.RegisterChannelzServiceToServer(grpcServer)
+
+		channelListener, err := net.Listen("tcp", ":8001")
+		if err != nil {
+			log.Fatal(err)
+		}
+		go grpcServer.Serve(channelListener)
+
+		adminListener, err := net.Listen("tcp", ":8082")
+		if err != nil {
+			log.Fatal(err)
+		}
+		go http.Serve(adminListener, nil)
+	}()
+
 	ctx := context.Background()
 
 	var opts []option.ClientOption
-	opts = append(opts, option.WithEndpoint("test-bigtable.sandbox.googleapis.com:443"))
+	switch env {
+	case "prod":
+		opts = append(opts, option.WithEndpoint("bigtable.googleapis.com:443"))
+	case "staging":
+		opts = append(opts, option.WithEndpoint("staging-bigtable.sandbox.googleapis.com:443"))
+	default:
+		opts = append(opts, option.WithEndpoint("test-bigtable.sandbox.googleapis.com:443"))
+	}
 
-	client, err := bigtable.NewClient(ctx, projectID, instanceID, opts...)
+	var configs bigtable.ClientConfig
+	configs.AppProfile = "default"
+	if appProfile := os.Getenv("APP_PROFILE"); appProfile != "" {
+		configs.AppProfile = appProfile
+	}
+
+	client, err := bigtable.NewClientWithConfig(ctx, projectID, instanceID, configs, opts...)
 	if err != nil {
 		log.Fatalf("bigtable.NewClient: %v", err)
 	}
 	defer client.Close()
 
-	log.Printf("Client created for Project: %s, Instance: %s", projectID, instanceID)
+	log.Printf("Client created. Starting workload with target QPS: %d across %d workers", targetRPS, numWorkers)
 
-	// Create a ticker to manage the 10-second interval
-	ticker := time.NewTicker(time.Duration(sleepSeconds) * time.Second)
-	defer ticker.Stop()
+	tbl := client.OpenTable("sushanb")
 
-	// 3. Main loop to send requests
-	for i := 0; ; i++ {
-		<-ticker.C // Wait for the tick
-		// Create a large slice and append it to the global memoryHog
-		// newAllocations := make([]HeapObject, ALLOCATION_COUNT)
-		// for j := 0; j < ALLOCATION_COUNT; j++ {
-		// 	// Populate the struct to simulate real data
-		// 	newAllocations[j] = HeapObject{
-		// 		ID:        uint64(i*ALLOCATION_COUNT + j),
-		// 		Timestamp: time.Now().Unix(),
-		// 		Value:     float64(i) + float64(j)*0.01,
-		// 	}
-		// }
-		// Appending to the global slice ensures the memory is NOT garbage collected.
-		// memoryHog = append(memoryHog, newAllocations...)
+	// Use a Token Bucket Rate Limiter with dynamic RPS
+	limiter := rate.NewLimiter(rate.Limit(targetRPS), targetRPS)
 
-		// Apply the mutation to the row (MutateRow equivalent)
-		err = client.PingAndWarm(ctx)
-		if err != nil {
-			// Log the error but don't stop the program for a single failed request
-			log.Printf("ERROR: PingAndWarm failed", err)
-		} else {
-			log.Printf("SUCCESS")
+	var wg sync.WaitGroup
+
+	// Start a periodic metrics logger
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		for range ticker.C {
+			s := atomic.SwapUint64(&successCount, 0)
+			e := atomic.SwapUint64(&errorCount, 0)
+			t := atomic.SwapUint64(&timeoutCount, 0)
+			log.Printf("Stats/sec -> Success: %d | Errors: %d | Timeouts: %d", s, e, t)
 		}
+	}()
+
+	// Start Worker Pool
+	for i := 0; i < numWorkers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				if err := limiter.Wait(ctx); err != nil {
+					return
+				}
+				runWorkload(ctx, client, tbl, cbtOp)
+			}
+		}()
 	}
+
+	wg.Wait()
 }

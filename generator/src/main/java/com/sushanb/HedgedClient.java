@@ -92,14 +92,14 @@ public class AyncFutureBigtable {
         // 4. Attach the final CompletableFuture callback
         completableFuture.whenComplete((row, throwable) -> {
             if (throwable != null) {
-                // Feature Request: Check if it's a Bigtable/RPC timeout
-                if (throwable.getMessage() != null && throwable.getMessage().contains("DEADLINE_EXCEEDED")) {
-                    logger.severe("READ_TIMEOUT: Bigtable readRow operation timed out after the configured 60 seconds.");
-                } else {
                     logger.severe("API_ERROR: Failed to read row due to another error: " + throwable.getMessage());
-                }
+
             } else if (row != null) {
                 logger.info("Successfully read row! Key: " + row.getKey().toStringUtf8());
+                logger.info("Successfully read row! Key: " + row.getCells().toString());
+            } else {
+                logger.info("row is null! Key: " + rowKey.toString());
+                logger.info("info"+ String.valueOf(row == null));
             }
         });
 
@@ -118,8 +118,7 @@ public class AyncFutureBigtable {
             // Sleep briefly to prevent the dummy app from exiting before the async callback fires
             try {
                 Thread.sleep(Duration.ofMinutes(2).toMillis());
-                // Feature Request: Log when the thread sleep finishes naturally
-                logger.info("MAIN_TIMEOUT: Main thread completed its 5-minute sleep. The dummy application will now exit.");
+                logger.info("MAIN_TIMEOUT: Main thread completed its 2-minute sleep. The dummy application will now exit.");
             } catch (InterruptedException e) {
                 logger.warning("MAIN_INTERRUPTED: Main thread sleep was interrupted prematurely.");
                 Thread.currentThread().interrupt(); // Restore interrupted status
