@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="target">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/target/original-repro-1.0-SNAPSHOT.jar!/" />
+      <root url="jar://$PROJECT_DIR$/target/repro-1.0-SNAPSHOT.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
