@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -50,6 +51,17 @@ func delegatorMutateRow(ctx context.Context, tbl bigtable.TableAPI) error {
 	return tbl.Apply(ctx, rowKey, mut)
 }
 
+func delegatorReadRow100Times(ctx context.Context, tbl bigtable.TableAPI) error {
+	rowKey := "row-100-test"
+	for i := 0; i < 100; i++ {
+		_, err := tbl.ReadRow(ctx, rowKey)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func runWorkload(ctx context.Context, client *bigtable.Client, tbl bigtable.TableAPI, cbtOp string) {
 	reqCtx, reqCancel := context.WithTimeout(ctx, overallRequestDuration)
 	defer reqCancel()
@@ -58,9 +70,12 @@ func runWorkload(ctx context.Context, client *bigtable.Client, tbl bigtable.Tabl
 	// to avoid massive goroutine churn and channel allocations.
 	errChan := make(chan error, 1)
 	go func() {
-		if cbtOp == "Mutate" {
+		switch cbtOp {
+		case "Mutate":
 			errChan <- delegatorMutateRow(reqCtx, tbl)
-		} else {
+		case "ReadRow100":
+			errChan <- delegatorReadRow100Times(reqCtx, tbl)
+		default:
 			errChan <- delegatorPingAndWarm(reqCtx, client)
 		}
 	}()
@@ -149,6 +164,43 @@ func main() {
 
 	ctx := context.Background()
 
+	// --- Check for the Single Channel Experiment Flag ---
+	if os.Getenv("RUN_EXPERIMENT_SINGLE_CHANNEL") == "true" {
+		log.Println("RUN_EXPERIMENT_SINGLE_CHANNEL is true. Executing single channel workload...")
+		target := os.Getenv("SINGLE_CHANNEL_TARGET")
+		if target == "" {
+			target = "google-c2p:///bigtable.googleapis.com" // Default fallback
+		}
+
+		supplieAppProfile := "default"
+
+		if appProfile := os.Getenv("APP_PROFILE"); appProfile != "" {
+			supplieAppProfile = appProfile
+		}
+		log.Print(supplieAppProfile)
+
+		numWorkers := 1
+
+		if envInFlight := os.Getenv("SINGLE_CHANNEL_IN_FLIGHT"); envInFlight != "" {
+			if parsedInFlight, err := strconv.Atoi(envInFlight); err == nil && parsedInFlight > 0 {
+				numWorkers = parsedInFlight
+			} else {
+				log.Printf("Warning: Invalid SINGLE_CHANNEL_IN_FLIGHT value '%s', falling back to NUM_WORKERS (%d)", envInFlight, numWorkers)
+			}
+		}
+		var err error
+		if os.Getenv("RUN_SINGLE_HOST") == "true" {
+			err = errors.New("lol")
+		} else {
+			err = errors.New("lol")
+		}
+		if err != nil {
+			log.Fatalf("Single channel experiment terminated with error: %v", err)
+		}
+		log.Println("Single channel experiment finished cleanly.")
+		return
+	}
+
 	var opts []option.ClientOption
 	switch env {
 	case "prod":
@@ -165,6 +217,8 @@ func main() {
 		configs.AppProfile = appProfile
 	}
 
+	configs.DisableDirectAccess = true
+
 	client, err := bigtable.NewClientWithConfig(ctx, projectID, instanceID, configs, opts...)
 	if err != nil {
 		log.Fatalf("bigtable.NewClient: %v", err)
@@ -173,7 +227,7 @@ func main() {
 
 	log.Printf("Client created. Starting workload with target QPS: %d across %d workers", targetRPS, numWorkers)
 
-	tbl := client.OpenTable("sushanb")
+	tbl := client.OpenTable("repro")
 
 	// Use a Token Bucket Rate Limiter with dynamic RPS
 	limiter := rate.NewLimiter(rate.Limit(targetRPS), targetRPS)
