@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -16,248 +15,197 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigtable"
-	channelz "github.com/rantav/go-grpc-channelz"
+	"cloud.google.com/go/bigtable/debugview"
+
 	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
-	"google.golang.org/grpc"
-	channelzservice "google.golang.org/grpc/channelz/service"
 )
+  
+  const requestTimeout = 10 * time.Second
 
-const (
-	overallRequestDuration = 10 * time.Second
-)
+  type counters struct {
+        success  uint64
+        errors   uint64
+        timeouts uint64
+  }
 
-// Use atomic counters instead of logging every request
-var (
-	successCount uint64
-	errorCount   uint64
-	timeoutCount uint64
-	rowCounter   uint64 // Fast, lock-free counter for unique row keys
-)
+	 var (
+      rowCounter  uint64
+      readCounter uint64
+  )
 
-func delegatorPingAndWarm(ctx context.Context, client *bigtable.Client) error {
-	return client.PingAndWarm(ctx)
-}
 
-func delegatorMutateRow(ctx context.Context, tbl bigtable.TableAPI) error {
-	// Generate a highly random, collision-free row key without blocking on math/rand locks
-	// Format: "row-<timestamp>-<atomic_increment>"
-	rowKey := fmt.Sprintf("row-%d-%d", time.Now().UnixNano(), atomic.AddUint64(&rowCounter, 1))
 
-	mut := bigtable.NewMutation()
-	// Set data in column family "cf", column "col1"
-	mut.Set("cf", "col1", bigtable.Now(), []byte("load-test-data"))
+  func (c *counters) record(err error) {
+        switch {
+        case err == nil:
+                atomic.AddUint64(&c.success, 1)
+        case errors.Is(err, context.DeadlineExceeded):
+                atomic.AddUint64(&c.timeouts, 1)
+        default:
+                atomic.AddUint64(&c.errors, 1)
+        }
+  }
 
-	return tbl.Apply(ctx, rowKey, mut)
-}
+  func (c *counters) snapshot() (success, errs, timeouts uint64) {
+        return atomic.SwapUint64(&c.success, 0),
+                atomic.SwapUint64(&c.errors, 0),
+                atomic.SwapUint64(&c.timeouts, 0)
+  }
+  
+  func mutateRow(ctx context.Context, tbl bigtable.TableAPI) error {
+      n := atomic.AddUint64(&rowCounter, 1)
+      key := fmt.Sprintf("myrow-%d-%d", time.Now().UnixNano(), n)
+      mut := bigtable.NewMutation()
+      mut.Set("cf12", "col1", bigtable.Now(), []byte(fmt.Sprintf("val-worker-%d", n)))
+      return tbl.Apply(ctx, key, mut)
+  }
 
-func delegatorReadRow100Times(ctx context.Context, tbl bigtable.TableAPI) error {
-	rowKey := "row-100-test"
-	for i := 0; i < 100; i++ {
-		_, err := tbl.ReadRow(ctx, rowKey)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
+  func readRow(ctx context.Context, tbl bigtable.TableAPI) error {
+      n := atomic.AddUint64(&readCounter, 1) % 1000 // rotate over existing myrow-0..999
+      _, err := tbl.ReadRow(ctx, fmt.Sprintf("myrow-%d", n))
+      return err
+  }
 
-func runWorkload(ctx context.Context, client *bigtable.Client, tbl bigtable.TableAPI, cbtOp string) {
-	reqCtx, reqCancel := context.WithTimeout(ctx, overallRequestDuration)
-	defer reqCancel()
+  func runDriver(ctx context.Context, wg *sync.WaitGroup, label string, qps, workers int, c *counters, op func(context.Context) error) {
+        limiter := rate.NewLimiter(rate.Limit(qps), qps)
+        log.Printf("[%s] starting %d workers at %d QPS", label, workers, qps)
+        for i := 0; i < workers; i++ {
+                wg.Add(1)
+                go func() {
+                        defer wg.Done()
+                        for {
+                                if err := limiter.Wait(ctx); err != nil {
+                                        return
+                                }
+                                reqCtx, cancel := context.WithTimeout(ctx, requestTimeout)
+                                c.record(op(reqCtx))
+                                cancel()
+                        }
+                }()
+        }
+  }
 
-	// Run the request synchronously within the worker goroutine
-	// to avoid massive goroutine churn and channel allocations.
-	errChan := make(chan error, 1)
-	go func() {
-		switch cbtOp {
-		case "Mutate":
-			errChan <- delegatorMutateRow(reqCtx, tbl)
-		case "ReadRow100":
-			errChan <- delegatorReadRow100Times(reqCtx, tbl)
-		default:
-			errChan <- delegatorPingAndWarm(reqCtx, client)
-		}
-	}()
+  func envInt(name string, def int) int {
+        v := os.Getenv(name)
+        if v == "" {
+                return def
+        }
+        n, err := strconv.Atoi(v)
+        if err != nil || n <= 0 {
+                log.Printf("Warning: invalid %s=%q, falling back to %d", name, v, def)
+                return def
+        }
+        return n
+  }
 
-	select {
-	case err := <-errChan:
-		if err != nil {
-			atomic.AddUint64(&errorCount, 1)
-		} else {
-			atomic.AddUint64(&successCount, 1)
-		}
-	case <-reqCtx.Done():
-		atomic.AddUint64(&timeoutCount, 1)
-	}
-}
+  func endpointFor(env string) string {
+        switch env {
+        case "prod":
+                return "bigtable.googleapis.com:443"
+        case "staging":
+                return "staging-bigtable.sandbox.googleapis.com:443"
+        default:
+                return "test-bigtable.sandbox.googleapis.com:443"
+        }
+  }
 
-func main() {
-	var (
-		projectIDPtr  = flag.String("project", "", "Your Google Cloud Project ID (required)")
-		instanceIDPtr = flag.String("instance", "", "Your Bigtable Instance ID (required)")
-		pprofPortPtr  = flag.Int("pprof-port", 6060, "The port for the pprof HTTP server")
-	)
+  func main() {
+        var (
+                projectID    = flag.String("project", "", "Google Cloud project ID (required)")
+                instanceID   = flag.String("instance", "", "Bigtable instance ID (required)")
+                tableID      = flag.String("table", "sushanb", "Bigtable table ID")
+                pprofPort    = flag.Int("pprof-port", 6060, "Port for the pprof HTTP server")
+                sessionzPort = flag.Int("sessionz-port", 8082, "Port for the bigtable sessionz debug UI")
+        )
+        flag.Parse()
 
-	flag.Parse()
+        if *projectID == "" || *instanceID == "" {
+                fmt.Println("Error: -project and -instance are required.")
+                flag.Usage()
+                os.Exit(2)
+        }
 
-	if *projectIDPtr == "" || *instanceIDPtr == "" {
-		fmt.Println("Error: All project, instance are required.")
-		flag.Usage()
-		return
-	}
+        readQPS := envInt("READ_QPS", 100)
+        writeQPS := envInt("WRITE_QPS", 100)
+        readWorkers := envInt("READ_WORKERS", 25)
+        writeWorkers := envInt("WRITE_WORKERS", 25)
 
-	projectID := *projectIDPtr
-	instanceID := *instanceIDPtr
-	pprofAddr := fmt.Sprintf(":%d", *pprofPortPtr)
-	env := os.Getenv("CBT_ENV_VAR")
+        appProfile := os.Getenv("APP_PROFILE")
+        if appProfile == "" {
+                appProfile = "default"
+        }
 
-	cbtOp := os.Getenv("CBT_OP")
-	if cbtOp == "" {
-		cbtOp = "PingAndWarm" // Default fallback
-	}
+        // pprof server.
+        go func() {
+                addr := fmt.Sprintf(":%d", *pprofPort)
+                log.Printf("pprof listening on http://localhost%s/debug/pprof/", addr)
+                if err := http.ListenAndServe(addr, nil); err != nil {
+                        log.Printf("pprof server exited: %v", err)
+                }
+        }()
 
-	// Parse TARGET_RPS from environment variables
-	targetRPS := 100 // Default fallback
-	if envRPS := os.Getenv("TARGET_QPS"); envRPS != "" {
-		if parsedRPS, err := strconv.Atoi(envRPS); err == nil && parsedRPS > 0 {
-			targetRPS = parsedRPS
-		} else {
-			log.Printf("Warning: Invalid TARGET_RPS value '%s', falling back to default %d", envRPS, targetRPS)
-		}
-	}
+        ctx := context.Background()
 
-	// --- NEW: Parse NUM_WORKERS from environment variables ---
-	numWorkers := 50 // Default fallback
-	if envWorkers := os.Getenv("NUM_WORKERS"); envWorkers != "" {
-		if parsedWorkers, err := strconv.Atoi(envWorkers); err == nil && parsedWorkers > 0 {
-			numWorkers = parsedWorkers
-		} else {
-			log.Printf("Warning: Invalid NUM_WORKERS value '%s', falling back to default %d", envWorkers, numWorkers)
-		}
-	}
+        configs := bigtable.ClientConfig{
+                AppProfile:        appProfile,
+                EnableSessionPool: true,
+        }
+      tcpStats := bigtable.NewTCPStats()
+      opts := []option.ClientOption{
+          option.WithEndpoint(endpointFor(os.Getenv("CBT_ENV_VAR"))),
+        tcpStats.ClientOption(),
+      }
 
-	go func() {
-		log.Printf("Starting pprof server on http://localhost%s/debug/pprof/", pprofAddr)
-		if err := http.ListenAndServe(pprofAddr, nil); err != nil {
-			log.Printf("pprof server failed: %v", err)
-		}
-	}()
+        client, err := bigtable.NewClientWithConfig(ctx, *projectID, *instanceID, configs, opts...)
+        if err != nil {
+                log.Fatalf("bigtable.NewClient: %v", err)
+        }
+        defer client.Close()
 
-	go func() {
-		grpcServer := grpc.NewServer()
-		http.Handle("/", channelz.CreateHandler("/", ":8001"))
-		channelzservice.RegisterChannelzServiceToServer(grpcServer)
+        // sessionz debug UI (separate mux so it doesn't share the pprof handler).
+        go func() {
+          mux := http.NewServeMux()
+  				mux.Handle("/debug/", http.StripPrefix("/debug", debugview.Handler(client, tcpStats)))
+          addr := fmt.Sprintf(":%d", *sessionzPort)
+          log.Printf("bigtable debug listening on http://localhost%s/debug/{sessionz,channelz,configz}/", addr)
+          if err := http.ListenAndServe(addr, mux); err != nil {
+                  log.Printf("debug server exited: %v", err)
+          }
+  	}()
 
-		channelListener, err := net.Listen("tcp", ":8001")
-		if err != nil {
-			log.Fatal(err)
-		}
-		go grpcServer.Serve(channelListener)
 
-		adminListener, err := net.Listen("tcp", ":8082")
-		if err != nil {
-			log.Fatal(err)
-		}
-		go http.Serve(adminListener, nil)
-	}()
+        tbl := client.OpenTable(*tableID)
 
-	ctx := context.Background()
+        var (
+                readCounters  counters
+                writeCounters counters
+                wg            sync.WaitGroup
+        )
 
-	// --- Check for the Single Channel Experiment Flag ---
-	if os.Getenv("RUN_EXPERIMENT_SINGLE_CHANNEL") == "true" {
-		log.Println("RUN_EXPERIMENT_SINGLE_CHANNEL is true. Executing single channel workload...")
-		target := os.Getenv("SINGLE_CHANNEL_TARGET")
-		if target == "" {
-			target = "google-c2p:///bigtable.googleapis.com" // Default fallback
-		}
+        // Per-second stats logger.
+        go func() {
+                ticker := time.NewTicker(time.Second)
+                defer ticker.Stop()
+                for {
+                        select {
+                        case <-ctx.Done():
+                                return
+                        case <-ticker.C:
+                                rs, re, rt := readCounters.snapshot()
+                                ws, we, wt := writeCounters.snapshot()
+                                log.Printf("READ ok=%d err=%d timeout=%d | WRITE ok=%d err=%d timeout=%d",
+                                        rs, re, rt, ws, we, wt)
+                        }
+                }
+        }()
+  
+        runDriver(ctx, &wg, "READ", readQPS, readWorkers, &readCounters, func(c context.Context) error {
+                return readRow(c, tbl)
+        })
+        runDriver(ctx, &wg, "WRITE", writeQPS, writeWorkers, &writeCounters, func(c context.Context) error {
+                return mutateRow(c, tbl)
+        })
 
-		supplieAppProfile := "default"
-
-		if appProfile := os.Getenv("APP_PROFILE"); appProfile != "" {
-			supplieAppProfile = appProfile
-		}
-		log.Print(supplieAppProfile)
-
-		numWorkers := 1
-
-		if envInFlight := os.Getenv("SINGLE_CHANNEL_IN_FLIGHT"); envInFlight != "" {
-			if parsedInFlight, err := strconv.Atoi(envInFlight); err == nil && parsedInFlight > 0 {
-				numWorkers = parsedInFlight
-			} else {
-				log.Printf("Warning: Invalid SINGLE_CHANNEL_IN_FLIGHT value '%s', falling back to NUM_WORKERS (%d)", envInFlight, numWorkers)
-			}
-		}
-		var err error
-		if os.Getenv("RUN_SINGLE_HOST") == "true" {
-			err = errors.New("lol")
-		} else {
-			err = errors.New("lol")
-		}
-		if err != nil {
-			log.Fatalf("Single channel experiment terminated with error: %v", err)
-		}
-		log.Println("Single channel experiment finished cleanly.")
-		return
-	}
-
-	var opts []option.ClientOption
-	switch env {
-	case "prod":
-		opts = append(opts, option.WithEndpoint("bigtable.googleapis.com:443"))
-	case "staging":
-		opts = append(opts, option.WithEndpoint("staging-bigtable.sandbox.googleapis.com:443"))
-	default:
-		opts = append(opts, option.WithEndpoint("test-bigtable.sandbox.googleapis.com:443"))
-	}
-
-	var configs bigtable.ClientConfig
-	configs.AppProfile = "default"
-	if appProfile := os.Getenv("APP_PROFILE"); appProfile != "" {
-		configs.AppProfile = appProfile
-	}
-
-	configs.DisableDirectAccess = true
-
-	client, err := bigtable.NewClientWithConfig(ctx, projectID, instanceID, configs, opts...)
-	if err != nil {
-		log.Fatalf("bigtable.NewClient: %v", err)
-	}
-	defer client.Close()
-
-	log.Printf("Client created. Starting workload with target QPS: %d across %d workers", targetRPS, numWorkers)
-
-	tbl := client.OpenTable("repro")
-
-	// Use a Token Bucket Rate Limiter with dynamic RPS
-	limiter := rate.NewLimiter(rate.Limit(targetRPS), targetRPS)
-
-	var wg sync.WaitGroup
-
-	// Start a periodic metrics logger
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		for range ticker.C {
-			s := atomic.SwapUint64(&successCount, 0)
-			e := atomic.SwapUint64(&errorCount, 0)
-			t := atomic.SwapUint64(&timeoutCount, 0)
-			log.Printf("Stats/sec -> Success: %d | Errors: %d | Timeouts: %d", s, e, t)
-		}
-	}()
-
-	// Start Worker Pool
-	for i := 0; i < numWorkers; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for {
-				if err := limiter.Wait(ctx); err != nil {
-					return
-				}
-				runWorkload(ctx, client, tbl, cbtOp)
-			}
-		}()
-	}
-
-	wg.Wait()
-}
+        wg.Wait()
+  }

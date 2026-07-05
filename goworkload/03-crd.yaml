@@ -1,0 +1,51 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: bigtableworkloads.bigtable.sushanb.com
+spec:
+  group: bigtable.sushanb.com
+  names:
+    kind: BigtableWorkload
+    listKind: BigtableWorkloadList
+    plural: bigtableworkloads
+    singular: bigtableworkload
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                serviceAccountName:
+                  type: string
+                  description: "K8s Service Account to run the pod as"
+                projectID:
+                  type: string
+                instanceID:
+                  type: string
+                region:
+                  type: string
+                  description: "Google Cloud Region (e.g., us-central1)"
+                env:
+                  type: string
+                  description: "env to use"
+                replicas:
+                  type: integer
+                  minimum: 1
+                env:
+                  type: array
+                  description: "Environment variables for the container"
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required: ["name"]
+              required: ["projectID", "instanceID", "region", "serviceAccountName"]

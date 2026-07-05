@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bigtable-worker-sa
+  namespace: default
+---
+# 1. Define the permissions (ClusterRole)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: bigtable-operator-role
+rules:
+  # Allow watching/editing your Custom Resource
+  - apiGroups: ["bigtable.sushanb.com"]
+    resources: ["bigtableworkloads"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+
+# NEW Java rule
+  - apiGroups: ["java.sushanb.com"]
+    resources: ["javaworkloads"]
+    verbs: ["list", "watch", "get"]
+  # Allow the operator to create/manage Worker Deployments
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "delete"]
+  
+  # Optional: Allow writing events (good for logs like 'kubectl get events')
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+# 2. Bind the permissions to the Service Account (ClusterRoleBinding)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: bigtable-operator-binding
+subjects:
+  - kind: ServiceAccount
+    name: bigtable-worker-sa
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: bigtable-operator-role
+  apiGroup: rbac.authorization.k8s.io

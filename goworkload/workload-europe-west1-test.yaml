@@ -1,0 +1,19 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-europe-west1-c3d
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "cbt-md-g2g-repro"
+  region: "europe-west1"
+  replicas: 1
+  env:
+    - name: CBT_ENV_VAR
+      value: "test"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: READ_QPS
+      value: "2"
+    - name: WRITE_QPS
+      value: "2"
+  serviceAccountName: "bigtable-worker-sa"

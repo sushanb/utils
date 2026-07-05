@@ -1,0 +1,19 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/bigtable-utils/crd-operator:latest',
+      '.'
+    ]
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'push',
+      'us-central1-docker.pkg.dev/${PROJECT_ID}/bigtable-utils/crd-operator:latest'
+    ]
+
+# Store the image path in the build results
+images:
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/bigtable-utils/crd-operator:latest'
