@@ -1,0 +1,15 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-europe-west1
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-prober"
+  region: "europe-west1"
+  replicas: 3
+  env:
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: CBT_ENV_VAR
+      value: "prod"
+  serviceAccountName: "bigtable-worker-sa"

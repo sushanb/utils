@@ -1,0 +1,19 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: load-europe-west4-cache
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-cache-ew4"
+  region: "europe-west4"
+  replicas: 2
+  env:
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: READ_QPS
+      value: "1501"
+    - name: WRITE_QPS
+      value: "151"
+  serviceAccountName: "bigtable-worker-sa"

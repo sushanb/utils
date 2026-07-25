@@ -1,0 +1,25 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-east7
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-singapore"
+  region: "us-east7"
+  replicas: 1
+  env:
+    - name: CBT_ENABLE_DIRECTPATH
+      value: "true"
+    - name: CBT_BIGTABLE_CONN_POOL
+      value: "true"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: NUM_WORKERS
+      value: "1"
+    - name: TARGET_QPS
+      value: "20"
+    - name: CBT_LOAD_BALANCING_STRATEGY
+      value: "POWER_OF_TWO_LEAST_IN_FLIGHT"
+  serviceAccountName: "bigtable-worker-sa"

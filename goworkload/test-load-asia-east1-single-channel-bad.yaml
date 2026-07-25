@@ -1,0 +1,27 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-east1-single-channel-bad
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "test-sushanb"
+  region: "asia-east1"
+  replicas: 1
+  env:
+    # ---------------------------------------------------------
+    # Standard Workload Configuration (Ignored if RUN_EXPERIMENT... is true)
+    # ---------------------------------------------------------
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: CBT_OP
+      value: "PingAndWarm" # Options: "PingAndWarm" or "Mutate"
+    - name: TARGET_QPS
+      value: "100"
+    - name: NUM_WORKERS
+      value: "50"
+    # ---------------------------------------------------------
+    # Shared Configuration
+    # ---------------------------------------------------------
+    - name: APP_PROFILE
+      value: "default"
+  serviceAccountName: "bigtable-worker-sa"

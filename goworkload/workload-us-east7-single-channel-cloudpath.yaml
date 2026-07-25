@@ -1,0 +1,28 @@
+apiVersion: java.sushanb.com/v1
+kind: JavaWorkload
+metadata:
+  name: java-single-channel-us-east7-cloudpath
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "dev-prober"
+  region: "us-east7"
+  tableID: "test"  # <--- Make sure this table exists!
+
+  # 2. Scale
+  replicas: 1
+
+  # 3. Java Specific Tuning (Optional)
+  jvmArgs: "-Xmx1536m -Xms1536m"
+  appArgs: "--debug" # Passed as args to your main()
+  serviceAccountName: "java-worker-sa"
+  env:
+    - name: BIGTABLE_HOST
+      value: "bigtable.googleapis.com"
+    - name: SINGLE_CHANNEL_IN_FLIGHT
+      value: "100"
+    - name: APP_PROFILE
+      value: "RegionalReadProbe"
+    - name: PROJECT_ID
+      value: "autonomous-mote-782"
+    - name: INSTANCE_ID
+      value: "dev-prober"

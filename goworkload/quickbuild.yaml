@@ -1,0 +1,21 @@
+steps:
+  # --- Step 1: Build the Docker image ---
+  # We use the standard docker cloud builder.
+  # $PROJECT_ID is a built-in substitution variable.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/bigtable-utils/bigtable-worker:latest'
+      - '.'
+
+  # --- Step 2: Push the Docker image ---
+  # Pushes the image tagged in Step 1 to Artifact Registry.
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/bigtable-utils/bigtable-worker:latest'
+
+# Store the images in the build history
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/bigtable-utils/bigtable-worker:latest'

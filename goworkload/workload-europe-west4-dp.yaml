@@ -1,0 +1,27 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-europe-west4-dp
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-eu-w4"
+  region: "europe-west4"
+  replicas: 1
+  env:
+    - name: CBT_ENABLE_DIRECTPATH
+      value: "true"
+    - name: CBT_BIGTABLE_CONN_POOL
+      value: "true"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: NUM_WORKERS
+      value: "500"
+    - name: TARGET_QPS
+      value: "25000"
+    - name: CBT_OP
+      value: "Mutate"
+    - name: CBT_LOAD_BALANCING_STRATEGY
+      value: "POWER_OF_TWO_LEAST_IN_FLIGHT"
+  serviceAccountName: "bigtable-worker-sa"

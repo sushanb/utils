@@ -1,0 +1,21 @@
+apiVersion: java.sushanb.com/v1
+kind: JavaWorkload
+metadata:
+  name: java-prober-us-east7
+spec:
+  # 1. Target Configuration (Required)
+  projectID: "sbhattarai-test101"
+  instanceID: "pkb-benchmarks"
+  region: "us-east7"
+  tableID: "test"  # <--- Make sure this table exists!
+
+  # 2. Scale
+  replicas: 1
+
+  # 3. Java Specific Tuning (Optional)
+  jvmArgs: "-Xmx512m -Xms256m"
+  appArgs: "--debug" # Passed as args to your main()
+  serviceAccountName: "java-worker-sa"
+  env:
+    - name: CBT_ENABLE_DIRECTPATH
+      value: "true"

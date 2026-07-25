@@ -1,0 +1,38 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-east7-single-channel-neil
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "neilwells-test"
+  region: "us-east7"
+  replicas: 1
+  env:
+    # ---------------------------------------------------------
+    # Single Channel Experiment Configuration
+    # ---------------------------------------------------------
+    - name: RUN_EXPERIMENT_SINGLE_CHANNEL
+      value: "false"
+    - name: SINGLE_CHANNEL_TARGET
+      value: "google-c2p:///bigtable.googleapis.com"
+    - name: SINGLE_CHANNEL_IN_FLIGHT
+      value: "1"
+    - name: CBT_ENABLE_DIRECTPATH
+      value: "true"
+    # ---------------------------------------------------------
+    # Standard Workload Configuration (Ignored if RUN_EXPERIMENT... is true)
+    # ---------------------------------------------------------
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: CBT_OP
+      value: "PingAndWarm" # Options: "PingAndWarm" or "Mutate"
+    - name: TARGET_QPS
+      value: "1"
+    - name: NUM_WORKERS
+      value: "1"
+    # ---------------------------------------------------------
+    # Shared Configuration
+    # ---------------------------------------------------------
+    - name: APP_PROFILE
+      value: "isolated"
+  serviceAccountName: "bigtable-worker-sa"

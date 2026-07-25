@@ -1,0 +1,16 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableWorkload
+metadata:
+  name: test-load-east4
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-prober"
+  region: "us-east4"
+  replicas: 2
+  env:
+    - name: CBT_ENABLE_DIRECTPATH
+      value: "false"
+    - name: CBT_BIGTABLE_CONN_POOL
+      value: "true"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"

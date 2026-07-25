@@ -13,7 +13,7 @@ spec:
     - name: CBT_ENABLE_DEBUG
       value: "true"
     - name: READ_QPS
-      value: "2"
+      value: "1103"
     - name: WRITE_QPS
-      value: "2"
+      value: "1104"
   serviceAccountName: "bigtable-worker-sa"
