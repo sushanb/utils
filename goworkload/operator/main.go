@@ -43,6 +43,14 @@ var (
 	}
 
 	javaWorkerImage = os.Getenv("JAVA_WORKER_IMAGE") // New
+
+	validationGVR = schema.GroupVersionResource{
+		Group:    "bigtable.sushanb.com",
+		Version:  "v1",
+		Resource: "bigtablevalidationworkloads",
+	}
+
+	validationWorkerImage = os.Getenv("VALIDATION_WORKER_IMAGE")
 )
 
 func main() {
@@ -111,6 +119,20 @@ func main() {
 		},
 	})
 
+	// --- Watcher 3: Bigtable Validation Workloads ---
+	validationInformer := factory.ForResource(validationGVR).Informer()
+	validationInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			reconcileValidation(clientset, obj)
+		},
+		UpdateFunc: func(old, new interface{}) {
+			reconcileValidation(clientset, new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			log.Println("BigtableValidationWorkload deleted")
+		},
+	})
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -155,6 +177,45 @@ func reconcileGoWorkload(clientset *kubernetes.Clientset, obj interface{}) {
 	// Owner Reference for Bigtable CR
 	ownerRef := *metav1.NewControllerRef(u, schema.GroupVersionKind{
 		Group: "bigtable.sushanb.com", Version: "v1", Kind: "BigtableWorkload",
+	})
+
+	ensureDeployment(clientset, namespace, deploymentName, replicas, region, desiredContainer, ownerRef, serviceAccount)
+}
+
+func reconcileValidation(clientset *kubernetes.Clientset, obj interface{}) {
+	u := obj.(*unstructured.Unstructured)
+	name := u.GetName()
+	namespace := u.GetNamespace()
+
+	spec := u.Object["spec"].(map[string]interface{})
+	projectID, _ := spec["projectID"].(string)
+	instanceID, _ := spec["instanceID"].(string)
+	region, _ := spec["region"].(string)
+	replicas := int32(spec["replicas"].(int64))
+
+	serviceAccount, _ := spec["serviceAccountName"].(string)
+	if serviceAccount == "" {
+		serviceAccount = "bigtable-worker-sa"
+	}
+
+	parsedEnv := parseEnv(spec)
+
+	deploymentName := fmt.Sprintf("%s-bt-validator", name)
+	log.Printf("[Validation] Reconciling: %s | Instance: %s", name, instanceID)
+
+	desiredContainer := corev1.Container{
+		Name:            "validator",
+		Image:           validationWorkerImage,
+		ImagePullPolicy: corev1.PullAlways,
+		Args: []string{
+			"-project=" + projectID,
+			"-instance=" + instanceID,
+		},
+		Env: parsedEnv,
+	}
+
+	ownerRef := *metav1.NewControllerRef(u, schema.GroupVersionKind{
+		Group: "bigtable.sushanb.com", Version: "v1", Kind: "BigtableValidationWorkload",
 	})
 
 	ensureDeployment(clientset, namespace, deploymentName, replicas, region, desiredContainer, ownerRef, serviceAccount)

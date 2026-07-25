@@ -1,0 +1,19 @@
+apiVersion: bigtable.sushanb.com/v1
+kind: BigtableValidationWorkload
+metadata:
+  name: validate-europe-west1
+spec:
+  projectID: "autonomous-mote-782"
+  instanceID: "sushanb-noncache"
+  region: "europe-west1"
+  replicas: 1
+  env:
+    - name: CBT_ENV_VAR
+      value: "prod"
+    - name: CBT_ENABLE_DEBUG
+      value: "true"
+    - name: READ_QPS
+      value: "500"
+    - name: READ_WORKERS
+      value: "10"
+  serviceAccountName: "bigtable-worker-sa"

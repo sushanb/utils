@@ -12,7 +12,7 @@ metadata:
 rules:
   # Allow watching/editing your Custom Resource
   - apiGroups: ["bigtable.sushanb.com"]
-    resources: ["bigtableworkloads"]
+    resources: ["bigtableworkloads", "bigtablevalidationworkloads"]
     verbs: ["get", "list", "watch", "update", "patch"]
 
 # NEW Java rule

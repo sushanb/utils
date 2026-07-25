@@ -20,6 +20,8 @@ spec:
           value: us-central1-docker.pkg.dev/sbhattarai-test101/bigtable-utils/bigtable-worker:latest
         - name: JAVA_WORKER_IMAGE
           value: us-central1-docker.pkg.dev/sbhattarai-test101/bigtable-utils/java-worker:latest
+        - name: VALIDATION_WORKER_IMAGE
+          value: us-central1-docker.pkg.dev/sbhattarai-test101/bigtable-utils/bigtable-validator:latest
         image: us-central1-docker.pkg.dev/sbhattarai-test101/bigtable-utils/crd-operator:latest
         imagePullPolicy: Always
         name: operator
