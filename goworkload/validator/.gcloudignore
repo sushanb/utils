@@ -1,0 +1,6 @@
+# .gitignore excludes vendor/, but Cloud Build needs it to be uploaded
+# so the Docker build can resolve deps offline (see Dockerfile). List
+# only what should NOT ship to Cloud Build.
+.git
+.gitignore
+bigtable-validator
