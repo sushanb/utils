@@ -8,6 +8,8 @@ spec:
   region: "europe-west1"
   replicas: 2
   env:
+    - name: TABLE
+      value: "bhattarai"
     - name: CBT_ENV_VAR
       value: "prod"
     - name: CBT_ENABLE_DEBUG
