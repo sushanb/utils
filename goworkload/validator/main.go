@@ -276,6 +276,15 @@ func main() {
 		os.Exit(2)
 	}
 
+	// Env vars are process-wide, so any pod-level CBT_FORCE_SESSION would
+	// apply to BOTH the classic and session clients — defeating the
+	// point of the two-client parity check. The transport gate here is
+	// bigtable.ClientConfig.EnableSessionPool (per-client); scrub the
+	// env so it can't override that.
+	if err := os.Unsetenv("CBT_FORCE_SESSION"); err != nil {
+		log.Fatalf("unset CBT_FORCE_SESSION: %v", err)
+	}
+
 	readQPS := envInt("READ_QPS", 100)
 	readWorkers := envInt("READ_WORKERS", 25)
 
