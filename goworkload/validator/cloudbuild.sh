@@ -22,6 +22,11 @@ if [ -z "$PROJECT_ID" ]; then
   exit 1
 fi
 
+# Resolve the local replace directive into ./vendor so Cloud Build
+# doesn't need access to the host path from go.mod.
+echo "Vendoring dependencies..."
+go mod vendor
+
 gcloud builds submit --config $YAML_FILE .
 
 echo "========================================================"

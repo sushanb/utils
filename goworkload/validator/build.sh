@@ -8,6 +8,11 @@ export TAG=$(git rev-parse --short HEAD)
 
 export IMAGE_URL="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${TAG}"
 
+# Resolve the local replace directive into ./vendor so the Docker build
+# doesn't need access to the host path from go.mod.
+echo "Vendoring dependencies..."
+go mod vendor
+
 echo "Building image: $IMAGE_URL"
 docker build --platform linux/amd64 -t $IMAGE_URL .
 
