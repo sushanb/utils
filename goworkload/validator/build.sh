@@ -9,8 +9,11 @@ export TAG=$(git rev-parse --short HEAD)
 export IMAGE_URL="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${TAG}"
 
 # Resolve the local replace directive into ./vendor so the Docker build
-# doesn't need access to the host path from go.mod.
+# doesn't need access to the host path from go.mod. Tidy first so
+# vendor/modules.txt matches the actually-imported set (Go 1.14+ vendor
+# mode rejects any drift).
 echo "Vendoring dependencies..."
+go mod tidy
 go mod vendor
 
 echo "Building image: $IMAGE_URL"
