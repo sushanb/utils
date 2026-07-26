@@ -41,7 +41,22 @@ type counters struct {
 	errors           uint64
 }
 
-var readCounter uint64
+var (
+	readCounter   uint64
+	mutateCounter uint64
+)
+
+const (
+	// Cells the mutate validator writes into every attempt-row. Distinct
+	// column qualifiers so the read validator's byte-parity check on the
+	// load-test rows never collides — see rowKeyPrefix* below.
+	mutateFamily  = "cf12"
+	mutateColClas = "vc-classic"
+	mutateColSess = "vc-session"
+
+	rowKeyPrefixRead   = "myrow" // read validator's key space (also written by the load-test worker)
+	rowKeyPrefixMutate = "mrow"  // mutate validator's key space — disjoint from above
+)
 
 type stats struct {
 	Sent             uint64
@@ -67,7 +82,7 @@ func validateRow(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, 
 	atomic.AddUint64(&c.sent, 1)
 
 	n := atomic.AddUint64(&readCounter, 1) % rowKeySpace
-	rowKey := fmt.Sprintf("myrow-%d", n)
+	rowKey := fmt.Sprintf("%s-%d", rowKeyPrefixRead, n)
 
 	classicCtx, cancelC := context.WithTimeout(ctx, requestTimeout)
 	classicRow, cErr := classicTbl.ReadRow(classicCtx, rowKey, bigtable.RowFilter(bigtable.LatestNFilter(1)))
@@ -97,6 +112,92 @@ func validateRow(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, 
 		return
 	}
 	atomic.AddUint64(&c.match, 1)
+}
+
+// validateMutate exercises MutateRow parity. Same row key, two distinct
+// column qualifiers ("vc-classic" via classic client, "vc-session" via
+// session client), then a ReadRow to prove both cells landed with the
+// expected bytes. Distinct qualifiers coexist under versions()=1 GC —
+// each has its own single-version budget.
+func validateMutate(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, c *counters) {
+	atomic.AddUint64(&c.sent, 1)
+
+	n := atomic.AddUint64(&mutateCounter, 1) % rowKeySpace
+	rowKey := fmt.Sprintf("%s-%d", rowKeyPrefixMutate, n)
+	ts := bigtable.Now()
+	val := []byte(fmt.Sprintf("val-%d", n))
+
+	mutC := bigtable.NewMutation()
+	mutC.Set(mutateFamily, mutateColClas, ts, val)
+	cCtx, cancelC := context.WithTimeout(ctx, requestTimeout)
+	cErr := classicTbl.Apply(cCtx, rowKey, mutC)
+	cancelC()
+
+	mutS := bigtable.NewMutation()
+	mutS.Set(mutateFamily, mutateColSess, ts, val)
+	sCtx, cancelS := context.WithTimeout(ctx, requestTimeout)
+	sErr := sessionTbl.Apply(sCtx, rowKey, mutS)
+	cancelS()
+
+	if cErr != nil || sErr != nil {
+		firstErr := cErr
+		if firstErr == nil {
+			firstErr = sErr
+		}
+		if errors.Is(firstErr, context.DeadlineExceeded) {
+			atomic.AddUint64(&c.deadlineExceeded, 1)
+		} else {
+			atomic.AddUint64(&c.errors, 1)
+		}
+		return
+	}
+
+	rCtx, cancelR := context.WithTimeout(ctx, requestTimeout)
+	row, rErr := classicTbl.ReadRow(rCtx, rowKey, bigtable.RowFilter(bigtable.LatestNFilter(1)))
+	cancelR()
+	if rErr != nil {
+		if errors.Is(rErr, context.DeadlineExceeded) {
+			atomic.AddUint64(&c.deadlineExceeded, 1)
+		} else {
+			atomic.AddUint64(&c.errors, 1)
+		}
+		return
+	}
+
+	if !mutateCellsMatch(row, val) {
+		atomic.AddUint64(&c.mismatch, 1)
+		log.Printf("MISMATCH row=%q\n  wanted %s:%s=%s:%s=%q\n  got=%s",
+			rowKey, mutateFamily, mutateColClas, mutateFamily, mutateColSess, val, formatRow(row))
+		return
+	}
+	atomic.AddUint64(&c.match, 1)
+}
+
+// mutateCellsMatch verifies that both mutateColClas and mutateColSess
+// cells under mutateFamily are present and carry `want`.
+func mutateCellsMatch(row bigtable.Row, want []byte) bool {
+	items, ok := row[mutateFamily]
+	if !ok {
+		return false
+	}
+	wantClasQual := mutateFamily + ":" + mutateColClas
+	wantSessQual := mutateFamily + ":" + mutateColSess
+	var haveClas, haveSess bool
+	for _, it := range items {
+		switch it.Column {
+		case wantClasQual:
+			if !bytes.Equal(it.Value, want) {
+				return false
+			}
+			haveClas = true
+		case wantSessQual:
+			if !bytes.Equal(it.Value, want) {
+				return false
+			}
+			haveSess = true
+		}
+	}
+	return haveClas && haveSess
 }
 
 // Cell order within a family is stable across ReadRow paths, so we
@@ -364,9 +465,23 @@ func main() {
 		}
 	}()
 
-	runDriver(ctx, &wg, readQPS, readWorkers, func(c context.Context) {
-		validateRow(c, classicTbl, sessionTbl, &validateCounters)
-	})
+	mode := os.Getenv("VALIDATOR_MODE")
+	if mode == "" {
+		mode = "read"
+	}
+
+	var op func(context.Context)
+	switch mode {
+	case "read":
+		op = func(c context.Context) { validateRow(c, classicTbl, sessionTbl, &validateCounters) }
+	case "mutate":
+		op = func(c context.Context) { validateMutate(c, classicTbl, sessionTbl, &validateCounters) }
+	default:
+		log.Fatalf("unknown VALIDATOR_MODE=%q (want \"read\" or \"mutate\")", mode)
+	}
+	log.Printf("VALIDATOR_MODE=%s", mode)
+
+	runDriver(ctx, &wg, readQPS, readWorkers, op)
 
 	wg.Wait()
 }
