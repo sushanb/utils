@@ -99,6 +99,9 @@ func validateRow(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, 
 	atomic.AddUint64(&c.match, 1)
 }
 
+// Cell order within a family is stable across ReadRow paths, so we
+// compare item-by-item without sorting. Any ordering difference IS a
+// mismatch we want to flag.
 func rowsEqual(a, b bigtable.Row) bool {
 	if len(a) != len(b) {
 		return false
@@ -108,33 +111,16 @@ func rowsEqual(a, b bigtable.Row) bool {
 		if !ok || len(itemsA) != len(itemsB) {
 			return false
 		}
-		sa := sortedCopy(itemsA)
-		sb := sortedCopy(itemsB)
-		for i := range sa {
-			if sa[i].Row != sb[i].Row ||
-				sa[i].Column != sb[i].Column ||
-				sa[i].Timestamp != sb[i].Timestamp ||
-				!bytes.Equal(sa[i].Value, sb[i].Value) {
+		for i := range itemsA {
+			if itemsA[i].Row != itemsB[i].Row ||
+				itemsA[i].Column != itemsB[i].Column ||
+				itemsA[i].Timestamp != itemsB[i].Timestamp ||
+				!bytes.Equal(itemsA[i].Value, itemsB[i].Value) {
 				return false
 			}
 		}
 	}
 	return true
-}
-
-func sortedCopy(items []bigtable.ReadItem) []bigtable.ReadItem {
-	out := make([]bigtable.ReadItem, len(items))
-	copy(out, items)
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Column != out[j].Column {
-			return out[i].Column < out[j].Column
-		}
-		if out[i].Timestamp != out[j].Timestamp {
-			return out[i].Timestamp < out[j].Timestamp
-		}
-		return bytes.Compare(out[i].Value, out[j].Value) < 0
-	})
-	return out
 }
 
 func formatRow(r bigtable.Row) string {
@@ -148,7 +134,7 @@ func formatRow(r bigtable.Row) string {
 	}
 	sort.Strings(fams)
 	for _, fam := range fams {
-		for _, item := range sortedCopy(r[fam]) {
+		for _, item := range r[fam] {
 			fmt.Fprintf(&b, "[%s ts=%d %q] ", item.Column, item.Timestamp, item.Value)
 		}
 	}
