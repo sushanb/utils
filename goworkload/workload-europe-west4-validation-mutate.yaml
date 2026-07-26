@@ -10,6 +10,8 @@ spec:
   env:
     - name: VALIDATOR_MODE
       value: "mutate"
+    - name: MUTATE_FAMILIES
+      value: "cf1,cf2,cf3"
     - name: TABLE
       value: "sushanb-mutate"
     - name: CBT_ENV_VAR

@@ -13,6 +13,7 @@ import (
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -50,13 +51,18 @@ const (
 	// Cells the mutate validator writes into every attempt-row. Distinct
 	// column qualifiers so the read validator's byte-parity check on the
 	// load-test rows never collides — see rowKeyPrefix* below.
-	mutateFamily  = "cf12"
 	mutateColClas = "vc-classic"
 	mutateColSess = "vc-session"
 
 	rowKeyPrefixRead   = "myrow" // read validator's key space (also written by the load-test worker)
 	rowKeyPrefixMutate = "mrow"  // mutate validator's key space — disjoint from above
 )
+
+// mutateFamiliesDefault is the fallback set when MUTATE_FAMILIES is
+// unset. Each attempt writes vc-classic + vc-session cells in EVERY
+// family listed here, so a single ReadRow verifies parity across the
+// entire family fan-out.
+var mutateFamiliesDefault = []string{"cf1", "cf2", "cf3"}
 
 type stats struct {
 	Sent             uint64
@@ -114,12 +120,14 @@ func validateRow(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, 
 	atomic.AddUint64(&c.match, 1)
 }
 
-// validateMutate exercises MutateRow parity. Same row key, two distinct
-// column qualifiers ("vc-classic" via classic client, "vc-session" via
-// session client), then a ReadRow to prove both cells landed with the
-// expected bytes. Distinct qualifiers coexist under versions()=1 GC —
-// each has its own single-version budget.
-func validateMutate(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, c *counters) {
+// validateMutate exercises MutateRow parity across a fan-out of column
+// families. Each attempt:
+//   - classic client writes value V into `<cf>:vc-classic` for EVERY cf
+//   - session client writes value V into `<cf>:vc-session` for EVERY cf
+//   - a ReadRow proves all 2*len(families) cells landed with V
+// Distinct qualifiers coexist under versions()=1 GC — each has its own
+// single-version budget.
+func validateMutate(ctx context.Context, classicTbl, sessionTbl bigtable.TableAPI, families []string, c *counters) {
 	atomic.AddUint64(&c.sent, 1)
 
 	n := atomic.AddUint64(&mutateCounter, 1) % rowKeySpace
@@ -128,13 +136,16 @@ func validateMutate(ctx context.Context, classicTbl, sessionTbl bigtable.TableAP
 	val := []byte(fmt.Sprintf("val-%d", n))
 
 	mutC := bigtable.NewMutation()
-	mutC.Set(mutateFamily, mutateColClas, ts, val)
+	mutS := bigtable.NewMutation()
+	for _, fam := range families {
+		mutC.Set(fam, mutateColClas, ts, val)
+		mutS.Set(fam, mutateColSess, ts, val)
+	}
+
 	cCtx, cancelC := context.WithTimeout(ctx, requestTimeout)
 	cErr := classicTbl.Apply(cCtx, rowKey, mutC)
 	cancelC()
 
-	mutS := bigtable.NewMutation()
-	mutS.Set(mutateFamily, mutateColSess, ts, val)
 	sCtx, cancelS := context.WithTimeout(ctx, requestTimeout)
 	sErr := sessionTbl.Apply(sCtx, rowKey, mutS)
 	cancelS()
@@ -164,40 +175,45 @@ func validateMutate(ctx context.Context, classicTbl, sessionTbl bigtable.TableAP
 		return
 	}
 
-	if !mutateCellsMatch(row, val) {
+	if !mutateCellsMatch(row, families, val) {
 		atomic.AddUint64(&c.mismatch, 1)
-		log.Printf("MISMATCH row=%q\n  wanted %s:%s=%s:%s=%q\n  got=%s",
-			rowKey, mutateFamily, mutateColClas, mutateFamily, mutateColSess, val, formatRow(row))
+		log.Printf("MISMATCH row=%q families=%v want=%q\n  got=%s",
+			rowKey, families, val, formatRow(row))
 		return
 	}
 	atomic.AddUint64(&c.match, 1)
 }
 
-// mutateCellsMatch verifies that both mutateColClas and mutateColSess
-// cells under mutateFamily are present and carry `want`.
-func mutateCellsMatch(row bigtable.Row, want []byte) bool {
-	items, ok := row[mutateFamily]
-	if !ok {
-		return false
-	}
-	wantClasQual := mutateFamily + ":" + mutateColClas
-	wantSessQual := mutateFamily + ":" + mutateColSess
-	var haveClas, haveSess bool
-	for _, it := range items {
-		switch it.Column {
-		case wantClasQual:
-			if !bytes.Equal(it.Value, want) {
-				return false
+// mutateCellsMatch verifies that for every family in `families`, both
+// mutateColClas and mutateColSess cells exist and carry `want`.
+func mutateCellsMatch(row bigtable.Row, families []string, want []byte) bool {
+	for _, fam := range families {
+		items, ok := row[fam]
+		if !ok {
+			return false
+		}
+		wantClasQual := fam + ":" + mutateColClas
+		wantSessQual := fam + ":" + mutateColSess
+		var haveClas, haveSess bool
+		for _, it := range items {
+			switch it.Column {
+			case wantClasQual:
+				if !bytes.Equal(it.Value, want) {
+					return false
+				}
+				haveClas = true
+			case wantSessQual:
+				if !bytes.Equal(it.Value, want) {
+					return false
+				}
+				haveSess = true
 			}
-			haveClas = true
-		case wantSessQual:
-			if !bytes.Equal(it.Value, want) {
-				return false
-			}
-			haveSess = true
+		}
+		if !haveClas || !haveSess {
+			return false
 		}
 	}
-	return haveClas && haveSess
+	return true
 }
 
 // Cell order within a family is stable across ReadRow paths, so we
@@ -257,6 +273,27 @@ func runDriver(ctx context.Context, wg *sync.WaitGroup, qps, workers int, op fun
 			}
 		}()
 	}
+}
+
+// parseCSVEnv returns a trimmed, non-empty list from a comma-separated
+// env var (e.g. "cf1,cf2,cf3"), or `def` if the var is unset/empty.
+func parseCSVEnv(name string, def []string) []string {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	parts := strings.Split(v, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return def
+	}
+	return out
 }
 
 func envInt(name string, def int) int {
@@ -475,7 +512,9 @@ func main() {
 	case "read":
 		op = func(c context.Context) { validateRow(c, classicTbl, sessionTbl, &validateCounters) }
 	case "mutate":
-		op = func(c context.Context) { validateMutate(c, classicTbl, sessionTbl, &validateCounters) }
+		families := parseCSVEnv("MUTATE_FAMILIES", mutateFamiliesDefault)
+		log.Printf("MUTATE_FAMILIES=%v", families)
+		op = func(c context.Context) { validateMutate(c, classicTbl, sessionTbl, families, &validateCounters) }
 	default:
 		log.Fatalf("unknown VALIDATOR_MODE=%q (want \"read\" or \"mutate\")", mode)
 	}
