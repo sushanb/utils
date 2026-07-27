@@ -1,0 +1,30 @@
+# State + worktree cache for the reviewbot CronJob.
+#
+# Holds:
+#   /var/lib/reviewbot/cursor.json           — last-seen comment ID (advances every run)
+#   /var/lib/reviewbot/wt/pr-<N>/            — per-PR git worktree (reused across runs)
+#   /var/lib/reviewbot/prompt-pr<N>.md       — rendered prompt (per run, overwritten)
+#
+# 10Gi is plenty for the target repo (~200MB clone × a few concurrent PR worktrees).
+# Bump if you add more repos or the worktrees start filling up.
+#
+# `standard-rwo` is GKE's default balanced-perf zonal disk. Use `premium-rwo` for
+# faster fetch/checkout on very active repos.
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reviewbot
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: reviewbot-state
+  namespace: reviewbot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard-rwo

@@ -1,0 +1,47 @@
+# Build the reviewbot image via Cloud Build and push to Artifact Registry.
+#
+# Trigger with:
+#
+#   gcloud builds submit --config=reviewbot/cloudbuild.yaml \
+#     --substitutions=_REGION=us-central1,_REPO=reviewbot,_TAG=$(git rev-parse --short HEAD) .
+#
+# (from the goworkload/ dir — cloudbuild uploads the whole context, so run
+# from the parent of reviewbot/ so the go.mod at the root is picked up.)
+#
+# Substitutions:
+#   _REGION — Artifact Registry region (e.g. us-central1)
+#   _REPO   — Artifact Registry docker repo name (create once: `gcloud artifacts
+#              repositories create $_REPO --repository-format=docker --location=$_REGION`)
+#   _TAG    — image tag (git short SHA is a good default)
+
+steps:
+  - id: build
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - reviewbot/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/reviewbot:${_TAG}
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/reviewbot:latest
+      - .
+
+  - id: push-tag
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/reviewbot:${_TAG}"]
+
+  - id: push-latest
+    name: gcr.io/cloud-builders/docker
+    args: [push, "${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/reviewbot:latest"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8   # bigger machine for faster Go build + npm install
+
+substitutions:
+  _REGION: us-central1
+  _REPO: reviewbot
+  _TAG: latest
+
+timeout: 900s

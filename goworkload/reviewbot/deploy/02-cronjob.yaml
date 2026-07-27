@@ -1,0 +1,100 @@
+# reviewbot CronJob — polls PR comments every minute, dispatches Claude review.
+#
+# Auth model:
+#   Anthropic: none. `claude` authenticates to Vertex AI via GCE metadata (ADC).
+#     The pod's compute service account needs `roles/aiplatform.user` on the
+#     GCP_PROJECT. No Anthropic API key anywhere.
+#   GitHub: GitHub App installation token, minted per-request from the private
+#     key mounted from the `github-app` Secret.
+#
+# Update the IMAGE ref below to point at your Artifact Registry image after
+# building with cloudbuild.yaml.
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reviewbot
+  namespace: reviewbot
+spec:
+  schedule: "* * * * *"           # every minute
+  concurrencyPolicy: Forbid       # never overlap runs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  startingDeadlineSeconds: 300    # skip fires that queue > 5 min behind
+  jobTemplate:
+    spec:
+      backoffLimit: 0             # a failed run waits for the next minute
+      ttlSecondsAfterFinished: 600
+      activeDeadlineSeconds: 1800 # 30 min hard cap per invocation
+      template:
+        metadata:
+          labels:
+            app: reviewbot
+        spec:
+          restartPolicy: Never
+          # Uses the node's default compute SA via GCE metadata — no KSA
+          # override needed as long as the compute SA has roles/aiplatform.user
+          # on GCP_PROJECT. Override here if you want a dedicated KSA.
+          #
+          # serviceAccountName: reviewbot-ksa
+          containers:
+            - name: bot
+              image: REPLACE_WITH_ARTIFACT_REGISTRY_IMAGE:latest
+              imagePullPolicy: Always
+              env:
+                # ── GitHub App creds (from Secret) ────────────────────────
+                - name: GITHUB_APP_ID
+                  valueFrom:
+                    secretKeyRef: { name: github-app, key: app-id }
+                - name: GITHUB_APP_INSTALLATION_ID
+                  valueFrom:
+                    secretKeyRef: { name: github-app, key: installation-id }
+                - name: GITHUB_APP_PRIVATE_KEY
+                  value: /var/secrets/github-app/private-key.pem
+
+                # ── Target repo + trigger ─────────────────────────────────
+                - name: REVIEWBOT_REPO
+                  value: "sushanb/google-cloud-go"
+                - name: REVIEWBOT_TRIGGER
+                  value: "@sushanb-review-bot review"
+                - name: REVIEWBOT_MAX_PER_RUN
+                  value: "3"
+                - name: REVIEWBOT_LOOKBACK_HOURS
+                  value: "24"
+
+                # ── Vertex / Claude ───────────────────────────────────────
+                # GCP_PROJECT auto-detected from metadata if unset.
+                - name: GCP_PROJECT
+                  value: ""          # leave empty for metadata auto-detect
+                - name: GCP_REGION
+                  value: "global"    # or "us-east5" / "europe-west1" etc.
+                - name: REVIEWBOT_MODEL
+                  value: "claude-opus-5"
+
+                # ── Debug ─────────────────────────────────────────────────
+                - name: GOMAXPROCS
+                  value: "2"
+              volumeMounts:
+                - name: state
+                  mountPath: /var/lib/reviewbot
+                - name: github-app-key
+                  mountPath: /var/secrets/github-app
+                  readOnly: true
+              resources:
+                requests: { cpu: "200m", memory: "512Mi" }
+                limits:   { cpu: "2",    memory: "4Gi"   }
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities: { drop: ["ALL"] }
+                readOnlyRootFilesystem: false   # gh/git write under HOME + /tmp
+          volumes:
+            - name: state
+              persistentVolumeClaim:
+                claimName: reviewbot-state
+            - name: github-app-key
+              secret:
+                secretName: github-app
+                items:
+                  - key: private-key.pem
+                    path: private-key.pem
+                    mode: 0400
