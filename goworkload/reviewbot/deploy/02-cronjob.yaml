@@ -39,7 +39,7 @@ spec:
           # serviceAccountName: reviewbot-ksa
           containers:
             - name: bot
-              image: REPLACE_WITH_ARTIFACT_REGISTRY_IMAGE:latest
+              image: us-central1-docker.pkg.dev/sbhattarai-test101/bigtable-utils/reviewbot:latest
               imagePullPolicy: Always
               env:
                 # ── GitHub App creds (from Secret) ────────────────────────
