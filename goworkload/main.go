@@ -21,7 +21,8 @@ import (
 	"google.golang.org/api/option"
 )
 
-const requestTimeout = 25 * time.Millisecond
+var requestTimeout = 25 * time.Millisecond
+
 const rowKeySpace = 2_000_000
 
 type counters struct {
@@ -131,6 +132,8 @@ func main() {
 	writeWorkers := envInt("WRITE_WORKERS", 25)
 
 	appProfile := os.Getenv("APP_PROFILE")
+
+	requestTimeout = time.Duration(envInt("REQUEST_TIMEOUT_MS", 25)) * time.Millisecond
 	if appProfile == "" {
 		appProfile = "default"
 	}
@@ -149,6 +152,7 @@ func main() {
 	configs := bigtable.ClientConfig{
 		AppProfile:        appProfile,
 		EnableSessionPool: true,
+		EnableClientDebug: true, // add
 	}
 	tcpStats := bigtable.NewTCPStats()
 	opts := []option.ClientOption{
