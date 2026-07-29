@@ -58,4 +58,4 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 )
 
-replace cloud.google.com/go/bigtable => /Users/sushantsusan/google-cloud-go/bigtable
+replace cloud.google.com/go/bigtable => /home/sushantsusan_google_com/google-cloud-go/bigtable

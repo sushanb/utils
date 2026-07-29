@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -67,9 +68,73 @@ func readRow(ctx context.Context, tbl bigtable.TableAPI) error {
 	return err
 }
 
-func runDriver(ctx context.Context, wg *sync.WaitGroup, label string, qps, workers int, c *counters, op func(context.Context) error) {
-	limiter := rate.NewLimiter(rate.Limit(qps), qps)
-	log.Printf("[%s] starting %d workers at %d QPS", label, workers, qps)
+// modulator returns a time-varying QPS oscillating between peak*minRatio and peak.
+// Patterns:
+//   sine — smooth cosine, max at t=0 (with phase offset applied).
+//   step — square wave: low for the first half of each period, high for the second half.
+//   flat — no modulation; always returns peak (preserves legacy behavior).
+type modulator struct {
+	peak     float64
+	minRatio float64
+	pattern  string
+	period   time.Duration
+	phase    time.Duration
+	start    time.Time
+}
+
+func (m *modulator) qps(now time.Time) float64 {
+	if m.pattern == "flat" || m.period <= 0 {
+		return m.peak
+	}
+	elapsed := now.Sub(m.start) + m.phase
+	frac := math.Mod(float64(elapsed)/float64(m.period), 1.0)
+	if frac < 0 {
+		frac += 1
+	}
+	var ratio float64
+	switch m.pattern {
+	case "step":
+		if frac < 0.5 {
+			ratio = m.minRatio
+		} else {
+			ratio = 1.0
+		}
+	default: // sine
+		amp := (1.0 - m.minRatio) / 2.0
+		mid := (1.0 + m.minRatio) / 2.0
+		ratio = mid + amp*math.Cos(2*math.Pi*frac)
+	}
+	return m.peak * ratio
+}
+
+func runDriver(ctx context.Context, wg *sync.WaitGroup, label string, mod *modulator, retune time.Duration, workers int, c *counters, op func(context.Context) error) {
+	initial := math.Max(1, mod.qps(time.Now()))
+	limiter := rate.NewLimiter(rate.Limit(initial), int(initial))
+	log.Printf("[%s] starting %d workers | peak=%.0f QPS pattern=%s period=%s phase=%s minRatio=%.2f retune=%s",
+		label, workers, mod.peak, mod.pattern, mod.period, mod.phase, mod.minRatio, retune)
+
+	// Retune loop: rewrites the limiter's rate & burst on each tick.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if mod.pattern == "flat" || mod.period <= 0 {
+			return
+		}
+		ticker := time.NewTicker(retune)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				q := math.Max(1, mod.qps(now))
+				limiter.SetLimit(rate.Limit(q))
+				limiter.SetBurst(int(q))
+				log.Printf("[%s] retune qps=%.0f", label, q)
+			}
+		}
+	}()
+
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
@@ -99,6 +164,45 @@ func envInt(name string, def int) int {
 	return n
 }
 
+func envDuration(name string, def time.Duration) time.Duration {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d <= 0 {
+		log.Printf("Warning: invalid %s=%q, falling back to %s", name, v, def)
+		return def
+	}
+	return d
+}
+
+func envFloat(name string, def, minVal, maxVal float64) float64 {
+	v := os.Getenv(name)
+	if v == "" {
+		return def
+	}
+	f, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		log.Printf("Warning: invalid %s=%q, falling back to %g", name, v, def)
+		return def
+	}
+	if f < minVal {
+		f = minVal
+	}
+	if f > maxVal {
+		f = maxVal
+	}
+	return f
+}
+
+func envString(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
+}
+
 func endpointFor(env string) string {
 	switch env {
 	case "prod":
@@ -126,6 +230,7 @@ func main() {
 		os.Exit(2)
 	}
 
+	// READ_QPS / WRITE_QPS are now interpreted as PEAK QPS.
 	readQPS := envInt("READ_QPS", 100)
 	writeQPS := envInt("WRITE_QPS", 100)
 	readWorkers := envInt("READ_WORKERS", 25)
@@ -137,6 +242,13 @@ func main() {
 	if appProfile == "" {
 		appProfile = "default"
 	}
+
+	// Diurnal / oscillation knobs.
+	cyclePeriod := envDuration("CYCLE_PERIOD", 10*time.Minute)
+	minRatio := envFloat("MIN_QPS_RATIO", 0.1, 0.01, 1.0)
+	pattern := envString("WORKLOAD_PATTERN", "sine")
+	retune := envDuration("RETUNE_INTERVAL", 5*time.Second)
+	writePhase := envDuration("WRITE_PHASE_OFFSET", cyclePeriod/2)
 
 	// pprof server.
 	go func() {
@@ -206,10 +318,20 @@ func main() {
 		}
 	}()
 
-	runDriver(ctx, &wg, "READ", readQPS, readWorkers, &readCounters, func(c context.Context) error {
+	start := time.Now()
+	readMod := &modulator{
+		peak: float64(readQPS), minRatio: minRatio, pattern: pattern,
+		period: cyclePeriod, phase: 0, start: start,
+	}
+	writeMod := &modulator{
+		peak: float64(writeQPS), minRatio: minRatio, pattern: pattern,
+		period: cyclePeriod, phase: writePhase, start: start,
+	}
+
+	runDriver(ctx, &wg, "READ", readMod, retune, readWorkers, &readCounters, func(c context.Context) error {
 		return readRow(c, tbl)
 	})
-	runDriver(ctx, &wg, "WRITE", writeQPS, writeWorkers, &writeCounters, func(c context.Context) error {
+	runDriver(ctx, &wg, "WRITE", writeMod, retune, writeWorkers, &writeCounters, func(c context.Context) error {
 		return mutateRow(c, tbl)
 	})
 
