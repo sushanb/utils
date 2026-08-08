@@ -1,0 +1,320 @@
+goroutine profile: total 1089
+178 @ 0x47fe2e 0x414fb3 0x414b32 0x87f2c5 0x487ba1
+#	0x87f2c4	google.golang.org/grpc/internal/grpcsync.(*CallbackSerializer).run+0xe4	/app/vendor/google.golang.org/grpc/internal/grpcsync/callback_serializer.go:88
+
+123 @ 0x47fe2e 0x45ce97 0x96b76c 0x487ba1
+#	0x96b76b	google.golang.org/grpc.newClientStreamWithParams.func4+0x8b	/app/vendor/google.golang.org/grpc/stream.go:427
+
+100 @ 0x47fe2e 0x45ce97 0x8eafa7 0x8eaa05 0x8ebbe5 0x8eb769 0x95a6fb 0x95b6d7 0x95cacb 0x96fd99 0x96eeff 0x96d98f 0x96ecd5 0xaeb5c6 0xd76922 0xd75bf4 0x487ba1
+#	0x8eafa6	google.golang.org/grpc/internal/transport.(*recvBufferReader).readMessageHeaderClient+0xa6	/app/vendor/google.golang.org/grpc/internal/transport/transport.go:204
+#	0x8eaa04	google.golang.org/grpc/internal/transport.(*recvBufferReader).ReadMessageHeader+0x44		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:150
+#	0x8ebbe4	google.golang.org/grpc/internal/transport.(*transportReader).ReadMessageHeader+0x24		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:463
+#	0x8eb768	google.golang.org/grpc/internal/transport.(*Stream).ReadMessageHeader+0xa8			/app/vendor/google.golang.org/grpc/internal/transport/transport.go:372
+#	0x95a6fa	google.golang.org/grpc.(*parser).recvMsg+0x3a							/app/vendor/google.golang.org/grpc/rpc_util.go:786
+#	0x95b6d6	google.golang.org/grpc.recvAndDecompress+0x96							/app/vendor/google.golang.org/grpc/rpc_util.go:945
+#	0x95caca	google.golang.org/grpc.recv+0xaa								/app/vendor/google.golang.org/grpc/rpc_util.go:1054
+#	0x96fd98	google.golang.org/grpc.(*csAttempt).recvMsg+0x358						/app/vendor/google.golang.org/grpc/stream.go:1174
+#	0x96eefe	google.golang.org/grpc.(*clientStream).RecvMsg.func1+0x1e					/app/vendor/google.golang.org/grpc/stream.go:1021
+#	0x96d98e	google.golang.org/grpc.(*clientStream).withRetry+0x3ce						/app/vendor/google.golang.org/grpc/stream.go:825
+#	0x96ecd4	google.golang.org/grpc.(*clientStream).RecvMsg+0x154						/app/vendor/google.golang.org/grpc/stream.go:1020
+#	0xaeb5c5	cloud.google.com/go/bigtable/apiv2/bigtablepb.(*bigtableOpenTableClient).Recv+0x45		/app/vendor/cloud.google.com/go/bigtable/apiv2/bigtablepb/bigtable_grpc.pb.go:401
+#	0xd76921	cloud.google.com/go/bigtable/internal/transport.(*Session).readLoop+0x121			/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:270
+#	0xd75bf3	cloud.google.com/go/bigtable/internal/transport.(*Session).Start.func1+0x53			/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:83
+
+100 @ 0x47fe2e 0x45ce97 0xd76bc5 0x487ba1
+#	0xd76bc4	cloud.google.com/go/bigtable/internal/transport.(*Session).readLoop.func2+0x84	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:258
+
+100 @ 0x47fe2e 0x45dfbd 0x45df94 0x48144e 0x4937e5 0xd8372a 0xd83725 0xd827b3 0x487ba1
+#	0x48144d	sync.runtime_SemacquireWaitGroup+0x2d							/usr/local/go/src/runtime/sema.go:114
+#	0x4937e4	sync.(*WaitGroup).Wait+0x84								/usr/local/go/src/sync/waitgroup.go:206
+#	0xd83729	cloud.google.com/go/bigtable/internal/transport.(*Session).WaitGoroutines+0xc09		/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:92
+#	0xd83724	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).createSession+0xc04	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool_scaling.go:278
+#	0xd827b2	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).Tick.func2+0x92	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool_scaling.go:156
+
+70 @ 0x47fe2e 0x45ce97 0x1031a51 0x487ba1
+#	0x1031a50	google.golang.org/grpc/internal/xds/balancer/outlierdetection.(*outlierDetectionBalancer).run+0xf0	/app/vendor/google.golang.org/grpc/internal/xds/balancer/outlierdetection/balancer.go:615
+
+70 @ 0x47fe2e 0x45ce97 0x1037d29 0x487ba1
+#	0x1037d28	google.golang.org/grpc/internal/xds/balancer/priority.(*priorityBalancer).run+0x88	/app/vendor/google.golang.org/grpc/internal/xds/balancer/priority/balancer.go:265
+
+68 @ 0x47fe2e 0x45ce97 0x8c5e68 0x8c6638 0x8d0152 0x487ba1
+#	0x8c5e67	google.golang.org/grpc/internal/transport.(*controlBuffer).get+0x107	/app/vendor/google.golang.org/grpc/internal/transport/controlbuf.go:420
+#	0x8c6637	google.golang.org/grpc/internal/transport.(*loopyWriter).run+0x77	/app/vendor/google.golang.org/grpc/internal/transport/controlbuf.go:595
+#	0x8d0151	google.golang.org/grpc/internal/transport.NewHTTP2Client.func6+0xd1	/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:478
+
+45 @ 0x47fe2e 0x442977 0x47f005 0x502307 0x5035f9 0x5035e7 0x5b3345 0x5c34c5 0x62673b 0x5393f8 0x62691e 0x62399b 0x62a2a5 0x62a2a6 0x672657 0x4f8e8e 0x8b19a5 0x8b1973 0x8b206b 0x8e7e85 0x8da5e5 0x487ba1
+#	0x47f004	internal/poll.runtime_pollWait+0x84					/usr/local/go/src/runtime/netpoll.go:351
+#	0x502306	internal/poll.(*pollDesc).wait+0x26					/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x5035f8	internal/poll.(*pollDesc).waitRead+0x278				/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x5035e6	internal/poll.(*FD).Read+0x266						/usr/local/go/src/internal/poll/fd_unix.go:165
+#	0x5b3344	net.(*netFD).Read+0x24							/usr/local/go/src/net/fd_posix.go:68
+#	0x5c34c4	net.(*conn).Read+0x44							/usr/local/go/src/net/net.go:196
+#	0x62673a	crypto/tls.(*atLeastReader).Read+0x3a					/usr/local/go/src/crypto/tls/conn.go:819
+#	0x5393f7	bytes.(*Buffer).ReadFrom+0x97						/usr/local/go/src/bytes/buffer.go:217
+#	0x62691d	crypto/tls.(*Conn).readFromUntil+0xdd					/usr/local/go/src/crypto/tls/conn.go:841
+#	0x62399a	crypto/tls.(*Conn).readRecordOrCCS+0x3da				/usr/local/go/src/crypto/tls/conn.go:630
+#	0x62a2a4	crypto/tls.(*Conn).readRecord+0x144					/usr/local/go/src/crypto/tls/conn.go:592
+#	0x62a2a5	crypto/tls.(*Conn).Read+0x145						/usr/local/go/src/crypto/tls/conn.go:1397
+#	0x672656	bufio.(*Reader).Read+0x196						/usr/local/go/src/bufio/bufio.go:245
+#	0x4f8e8d	io.ReadAtLeast+0x8d							/usr/local/go/src/io/io.go:335
+#	0x8b19a4	io.ReadFull+0x64							/usr/local/go/src/io/io.go:354
+#	0x8b1972	golang.org/x/net/http2.readFrameHeader+0x32				/app/vendor/golang.org/x/net/http2/frame.go:250
+#	0x8b206a	golang.org/x/net/http2.(*Framer).ReadFrameHeader+0x6a			/app/vendor/golang.org/x/net/http2/frame.go:513
+#	0x8e7e84	google.golang.org/grpc/internal/transport.(*framer).readFrame+0x44	/app/vendor/google.golang.org/grpc/internal/transport/http_util.go:493
+#	0x8da5e4	google.golang.org/grpc/internal/transport.(*http2Client).reader+0x1c4	/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:1711
+
+42 @ 0x47fe2e 0x45ce97 0x8f474b 0x487ba1
+#	0x8f474a	google.golang.org/grpc/internal/resolver/dns.(*dnsResolver).watcher+0x24a	/app/vendor/google.golang.org/grpc/internal/resolver/dns/dns_resolver.go:224
+
+41 @ 0x47fe2e 0x45ce97 0xd77ead 0xd75b14 0x487ba1
+#	0xd77eac	cloud.google.com/go/bigtable/internal/transport.(*Session).heartbeatLoop+0x16c	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:508
+#	0xd75b13	cloud.google.com/go/bigtable/internal/transport.(*Session).Start.func2+0x53	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_lifecycle.go:84
+
+26 @ 0x47fe2e 0x442977 0x47f005 0x502307 0x5083a5 0x50838d 0x5c7456 0x8c31a3 0xab6357 0x8c3554 0x4f8e8e 0x8b19a5 0x8b1973 0x8b206b 0x8e7e85 0x8da5e5 0x487ba1
+#	0x47f004	internal/poll.runtime_pollWait+0x84								/usr/local/go/src/runtime/netpoll.go:351
+#	0x502306	internal/poll.(*pollDesc).wait+0x26								/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x5083a4	internal/poll.(*pollDesc).waitRead+0x124							/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x50838c	internal/poll.(*FD).RawRead+0x10c								/usr/local/go/src/internal/poll/fd_unix.go:710
+#	0x5c7455	net.(*rawConn).Read+0x35									/usr/local/go/src/net/rawconn.go:44
+#	0x8c31a2	google.golang.org/grpc/internal/transport/readyreader.(*nonBlockingReader).ReadOnReady+0xa2	/app/vendor/google.golang.org/grpc/internal/transport/readyreader/ready_reader.go:114
+#	0xab6356	google.golang.org/grpc/credentials/alts/internal/conn.(*conn).ReadOnReady+0x436			/app/vendor/google.golang.org/grpc/credentials/alts/internal/conn/record.go:240
+#	0x8c3553	google.golang.org/grpc/internal/transport/readyreader.(*bufReadyReader).Read+0x173		/app/vendor/google.golang.org/grpc/internal/transport/readyreader/ready_reader.go:221
+#	0x4f8e8d	io.ReadAtLeast+0x8d										/usr/local/go/src/io/io.go:335
+#	0x8b19a4	io.ReadFull+0x64										/usr/local/go/src/io/io.go:354
+#	0x8b1972	golang.org/x/net/http2.readFrameHeader+0x32							/app/vendor/golang.org/x/net/http2/frame.go:250
+#	0x8b206a	golang.org/x/net/http2.(*Framer).ReadFrameHeader+0x6a						/app/vendor/golang.org/x/net/http2/frame.go:513
+#	0x8e7e84	google.golang.org/grpc/internal/transport.(*framer).readFrame+0x44				/app/vendor/google.golang.org/grpc/internal/transport/http_util.go:493
+#	0x8da5e4	google.golang.org/grpc/internal/transport.(*http2Client).reader+0x1c4				/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:1711
+
+24 @ 0x47fe2e 0x45ce97 0xaacf05 0xaacad0 0x10ec249 0x10ec24a 0x487ba1
+#	0xaacf04	golang.org/x/time/rate.(*Limiter).wait+0x3e4	/app/vendor/golang.org/x/time/rate/rate.go:286
+#	0xaacacf	golang.org/x/time/rate.(*Limiter).WaitN+0x4f	/app/vendor/golang.org/x/time/rate/rate.go:249
+#	0x10ec248	golang.org/x/time/rate.(*Limiter).Wait+0xc8	/app/vendor/golang.org/x/time/rate/rate.go:234
+#	0x10ec249	main.runDriver.func2+0xc9			/app/main.go:146
+
+20 @ 0x47fe2e 0x45ce97 0x10bc932 0x487ba1
+#	0x10bc931	google.golang.org/grpc/balancer/rls.(*rlsBalancer).run+0x171	/app/vendor/google.golang.org/grpc/balancer/rls/balancer.go:240
+
+20 @ 0x47fe2e 0x45ce97 0x10bce86 0x487ba1
+#	0x10bce85	google.golang.org/grpc/balancer/rls.(*rlsBalancer).purgeDataCache+0xa5	/app/vendor/google.golang.org/grpc/balancer/rls/balancer.go:281
+
+16 @ 0x47fe2e 0x45ce97 0x8c5325 0x8c5427 0x96dc65 0x96d702 0x96da39 0x10cc039 0x10d0fde 0xaa7d96 0xaa791d 0x10d0c11 0x10cb885 0x10cb425 0x10ccefd 0x10e68a9 0x10e6c74 0x10ebaad 0x10ed9e5 0x10ec216 0x487ba1
+#	0x8c5324	google.golang.org/grpc/internal/transport.(*ClientStream).waitOnHeader+0x64	/app/vendor/google.golang.org/grpc/internal/transport/client_stream.go:130
+#	0x8c5426	google.golang.org/grpc/internal/transport.(*ClientStream).Header+0x26		/app/vendor/google.golang.org/grpc/internal/transport/client_stream.go:160
+#	0x96dc64	google.golang.org/grpc.(*clientStream).Header.func1+0x24			/app/vendor/google.golang.org/grpc/stream.go:866
+#	0x96d701	google.golang.org/grpc.(*clientStream).withRetry+0x141				/app/vendor/google.golang.org/grpc/stream.go:841
+#	0x96da38	google.golang.org/grpc.(*clientStream).Header+0x58				/app/vendor/google.golang.org/grpc/stream.go:864
+#	0x10cc038	cloud.google.com/go/bigtable.(*Table).readRows.func1+0x738			/app/vendor/cloud.google.com/go/bigtable/bigtable.go:258
+#	0x10d0fdd	cloud.google.com/go/bigtable.gaxInvokeWithRecorder.func1+0x35d			/app/vendor/cloud.google.com/go/bigtable/bigtable.go:1148
+#	0xaa7d95	github.com/googleapis/gax-go/v2.invoke+0x315					/app/vendor/github.com/googleapis/gax-go/v2/invoke.go:108
+#	0xaa791c	github.com/googleapis/gax-go/v2.Invoke+0xdc					/app/vendor/github.com/googleapis/gax-go/v2/invoke.go:61
+#	0x10d0c10	cloud.google.com/go/bigtable.gaxInvokeWithRecorder+0x190			/app/vendor/cloud.google.com/go/bigtable/bigtable.go:1155
+#	0x10cb884	cloud.google.com/go/bigtable.(*Table).readRows+0x284				/app/vendor/cloud.google.com/go/bigtable/bigtable.go:211
+#	0x10cb424	cloud.google.com/go/bigtable.(*Table).ReadRows+0x204				/app/vendor/cloud.google.com/go/bigtable/bigtable.go:186
+#	0x10ccefc	cloud.google.com/go/bigtable.(*Table).readRowClassic+0x19c			/app/vendor/cloud.google.com/go/bigtable/bigtable.go:366
+#	0x10e68a8	cloud.google.com/go/bigtable.(*tableImpl).ReadRow+0x28				/app/vendor/cloud.google.com/go/bigtable/table.go:76
+#	0x10e6c73	cloud.google.com/go/bigtable.(*TableShim).ReadRow+0x113				/app/vendor/cloud.google.com/go/bigtable/table_shim.go:67
+#	0x10ebaac	main.readRow+0x14c								/app/main.go:68
+#	0x10ed9e4	main.main.func3+0x24								/app/main.go:351
+#	0x10ec215	main.runDriver.func2+0x95							/app/main.go:150
+
+8 @ 0x47fe2e 0x45ce97 0xd8b8ec 0xd8affb 0xd7cf6c 0xd989dc 0xd98c1c 0xd98504 0xd96457 0x10e2af3 0x10e6f79 0x10e7e02 0x10e6e65 0x10ebaad 0x10ed9e5 0x10ec216 0x487ba1
+#	0xd8b8eb	cloud.google.com/go/bigtable/internal/transport.(*Session).awaitInvokeResult+0xcb	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_vrpc.go:235
+#	0xd8affa	cloud.google.com/go/bigtable/internal/transport.(*Session).Invoke+0x65a			/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_vrpc.go:166
+#	0xd7cf6b	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).Invoke+0x22b		/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool.go:556
+#	0xd989db	cloud.google.com/go/bigtable/internal/session.dispatch[...].func1+0xdb			/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:259
+#	0xd98c1b	cloud.google.com/go/bigtable/internal/session.dispatch[...].RetryingVRpc.func2+0x11b	/app/vendor/cloud.google.com/go/bigtable/internal/transport/retrying.go:74
+#	0xd98503	cloud.google.com/go/bigtable/internal/session.dispatch[...]+0x343			/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:270
+#	0xd96456	cloud.google.com/go/bigtable/internal/session.(*sessionTable).ReadRow+0x156		/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:168
+#	0x10e2af2	cloud.google.com/go/bigtable.(*sessionTableHandle).ReadRow+0x52				/app/vendor/cloud.google.com/go/bigtable/session_table_cache.go:126
+#	0x10e6f78	cloud.google.com/go/bigtable.(*TableShim).ReadRow.func1+0x38				/app/vendor/cloud.google.com/go/bigtable/table_shim.go:82
+#	0x10e7e01	cloud.google.com/go/bigtable/internal/session.InterceptUnimplemented[...]+0x21		/app/vendor/cloud.google.com/go/bigtable/internal/session/unimplemented_interceptor.go:97
+#	0x10e6e64	cloud.google.com/go/bigtable.(*TableShim).ReadRow+0x304					/app/vendor/cloud.google.com/go/bigtable/table_shim.go:80
+#	0x10ebaac	main.readRow+0x14c									/app/main.go:68
+#	0x10ed9e4	main.main.func3+0x24									/app/main.go:351
+#	0x10ec215	main.runDriver.func2+0x95								/app/main.go:150
+
+4 @ 0x47fe2e 0x45ce97 0xb255a5 0xb2540f 0x487ba1
+#	0xb255a4	go.opentelemetry.io/otel/sdk/metric.(*PeriodicReader).run+0x124		/app/vendor/go.opentelemetry.io/otel/sdk/metric/periodic_reader.go:199
+#	0xb2540e	go.opentelemetry.io/otel/sdk/metric.NewPeriodicReader.func2+0x4e	/app/vendor/go.opentelemetry.io/otel/sdk/metric/periodic_reader.go:137
+
+3 @ 0x47fe2e 0x414fb3 0x414b32 0xdcd9a5 0x487ba1
+#	0xdcd9a4	google.golang.org/grpc/internal/xds/clients/internal/syncutil.(*CallbackSerializer).run+0xe4	/app/vendor/google.golang.org/grpc/internal/xds/clients/internal/syncutil/callback_serializer.go:88
+
+3 @ 0x8c67b3 0x8c67a7 0x8d0152 0x487ba1
+#	0x8c67a6	google.golang.org/grpc/internal/transport.(*loopyWriter).run+0x1e6	/app/vendor/google.golang.org/grpc/internal/transport/controlbuf.go:631
+#	0x8d0151	google.golang.org/grpc/internal/transport.NewHTTP2Client.func6+0xd1	/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:478
+
+2 @ 0x47fe2e 0x45ce97 0xd64765 0x487ba1
+#	0xd64764	cloud.google.com/go/bigtable/internal/transport.(*ConnectionRecycler).Start.func1+0x104	/app/vendor/cloud.google.com/go/bigtable/internal/transport/conn_recycler.go:66
+
+2 @ 0x47fe2e 0x45ce97 0xd71889 0x487ba1
+#	0xd71888	cloud.google.com/go/bigtable/internal/transport.(*MetricsReporter).Start.func1+0x108	/app/vendor/cloud.google.com/go/bigtable/internal/transport/metrics_reporter.go:102
+
+2 @ 0x47fe2e 0x45ce97 0xd72c19 0x487ba1
+#	0xd72c18	cloud.google.com/go/bigtable/internal/transport.(*Pacemaker).Start.func1+0x178	/app/vendor/cloud.google.com/go/bigtable/internal/transport/pacemaker.go:85
+
+2 @ 0x47fe2e 0x45ce97 0xd81051 0x487ba1
+#	0xd81050	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).startSlowMetricsLoop.func1+0xf0	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool_lifecycle.go:486
+
+2 @ 0x47fe2e 0x45ce97 0xd8175e 0x487ba1
+#	0xd8175d	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).startAfePruneLoop.func1+0xdd	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool_lifecycle.go:542
+
+2 @ 0x47fe2e 0x45ce97 0xd81b9e 0x487ba1
+#	0xd81b9d	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).startSweepStuckSessionsLoop.func1+0xdd	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool_lifecycle.go:574
+
+1 @ 0x43f411 0x47ec5d 0x7596f1 0x759505 0x75636b 0x7728ca 0x77337a 0x6f4249 0x6f6127 0x7137ae 0x6f2345 0x487ba1
+#	0x7596f0	runtime/pprof.writeRuntimeProfile+0xb0	/usr/local/go/src/runtime/pprof/pprof.go:788
+#	0x759504	runtime/pprof.writeGoroutine+0x44	/usr/local/go/src/runtime/pprof/pprof.go:747
+#	0x75636a	runtime/pprof.(*Profile).WriteTo+0x14a	/usr/local/go/src/runtime/pprof/pprof.go:371
+#	0x7728c9	net/http/pprof.handler.ServeHTTP+0x529	/usr/local/go/src/net/http/pprof/pprof.go:272
+#	0x773379	net/http/pprof.Index+0xd9		/usr/local/go/src/net/http/pprof/pprof.go:389
+#	0x6f4248	net/http.HandlerFunc.ServeHTTP+0x28	/usr/local/go/src/net/http/server.go:2322
+#	0x6f6126	net/http.(*ServeMux).ServeHTTP+0x1c6	/usr/local/go/src/net/http/server.go:2861
+#	0x7137ad	net/http.serverHandler.ServeHTTP+0x8d	/usr/local/go/src/net/http/server.go:3340
+#	0x6f2344	net/http.(*conn).serve+0x664		/usr/local/go/src/net/http/server.go:2109
+
+1 @ 0x47fe2e 0x442977 0x47f005 0x502307 0x5035f9 0x5035e7 0x5b3345 0x5c34c5 0x6ecc54 0x672123 0x672253 0x6f24a5 0x487ba1
+#	0x47f004	internal/poll.runtime_pollWait+0x84		/usr/local/go/src/runtime/netpoll.go:351
+#	0x502306	internal/poll.(*pollDesc).wait+0x26		/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x5035f8	internal/poll.(*pollDesc).waitRead+0x278	/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x5035e6	internal/poll.(*FD).Read+0x266			/usr/local/go/src/internal/poll/fd_unix.go:165
+#	0x5b3344	net.(*netFD).Read+0x24				/usr/local/go/src/net/fd_posix.go:68
+#	0x5c34c4	net.(*conn).Read+0x44				/usr/local/go/src/net/net.go:196
+#	0x6ecc53	net/http.(*connReader).Read+0x153		/usr/local/go/src/net/http/server.go:812
+#	0x672122	bufio.(*Reader).fill+0x102			/usr/local/go/src/bufio/bufio.go:113
+#	0x672252	bufio.(*Reader).Peek+0x52			/usr/local/go/src/bufio/bufio.go:152
+#	0x6f24a4	net/http.(*conn).serve+0x7c4			/usr/local/go/src/net/http/server.go:2145
+
+1 @ 0x47fe2e 0x442977 0x47f005 0x502307 0x50772c 0x50771a 0x5b51e9 0x5cc29b 0x5cb470 0x6f7c2c 0x6f7812 0x10edfda 0x10edfe1 0x487ba1
+#	0x47f004	internal/poll.runtime_pollWait+0x84		/usr/local/go/src/runtime/netpoll.go:351
+#	0x502306	internal/poll.(*pollDesc).wait+0x26		/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x50772b	internal/poll.(*pollDesc).waitRead+0x28b	/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x507719	internal/poll.(*FD).Accept+0x279		/usr/local/go/src/internal/poll/fd_unix.go:613
+#	0x5b51e8	net.(*netFD).accept+0x28			/usr/local/go/src/net/fd_unix.go:161
+#	0x5cc29a	net.(*TCPListener).accept+0x1a			/usr/local/go/src/net/tcpsock_posix.go:159
+#	0x5cb46f	net.(*TCPListener).Accept+0x2f			/usr/local/go/src/net/tcpsock.go:380
+#	0x6f7c2b	net/http.(*Server).Serve+0x30b			/usr/local/go/src/net/http/server.go:3463
+#	0x6f7811	net/http.(*Server).ListenAndServe+0x71		/usr/local/go/src/net/http/server.go:3389
+#	0x10edfd9	net/http.ListenAndServe+0x199			/usr/local/go/src/net/http/server.go:3704
+#	0x10edfe0	main.main.func1+0x1a0				/app/main.go:279
+
+1 @ 0x47fe2e 0x442977 0x47f005 0x502307 0x5083a5 0x50838d 0x5c7456 0x8c31a3 0x8c3554 0x4f8e8e 0x8b19a5 0x8b1973 0x8b206b 0x8e7e85 0x8da5e5 0x487ba1
+#	0x47f004	internal/poll.runtime_pollWait+0x84								/usr/local/go/src/runtime/netpoll.go:351
+#	0x502306	internal/poll.(*pollDesc).wait+0x26								/usr/local/go/src/internal/poll/fd_poll_runtime.go:84
+#	0x5083a4	internal/poll.(*pollDesc).waitRead+0x124							/usr/local/go/src/internal/poll/fd_poll_runtime.go:89
+#	0x50838c	internal/poll.(*FD).RawRead+0x10c								/usr/local/go/src/internal/poll/fd_unix.go:710
+#	0x5c7455	net.(*rawConn).Read+0x35									/usr/local/go/src/net/rawconn.go:44
+#	0x8c31a2	google.golang.org/grpc/internal/transport/readyreader.(*nonBlockingReader).ReadOnReady+0xa2	/app/vendor/google.golang.org/grpc/internal/transport/readyreader/ready_reader.go:114
+#	0x8c3553	google.golang.org/grpc/internal/transport/readyreader.(*bufReadyReader).Read+0x173		/app/vendor/google.golang.org/grpc/internal/transport/readyreader/ready_reader.go:221
+#	0x4f8e8d	io.ReadAtLeast+0x8d										/usr/local/go/src/io/io.go:335
+#	0x8b19a4	io.ReadFull+0x64										/usr/local/go/src/io/io.go:354
+#	0x8b1972	golang.org/x/net/http2.readFrameHeader+0x32							/app/vendor/golang.org/x/net/http2/frame.go:250
+#	0x8b206a	golang.org/x/net/http2.(*Framer).ReadFrameHeader+0x6a						/app/vendor/golang.org/x/net/http2/frame.go:513
+#	0x8e7e84	google.golang.org/grpc/internal/transport.(*framer).readFrame+0x44				/app/vendor/google.golang.org/grpc/internal/transport/http_util.go:493
+#	0x8da5e4	google.golang.org/grpc/internal/transport.(*http2Client).reader+0x1c4				/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:1711
+
+1 @ 0x47fe2e 0x45ce97 0x10e34a7 0x487ba1
+#	0x10e34a6	cloud.google.com/go/bigtable.(*sessionTableCache).sweeperLoop+0xe6	/app/vendor/cloud.google.com/go/bigtable/session_table_cache.go:322
+
+1 @ 0x47fe2e 0x45ce97 0x10edcad 0x487ba1
+#	0x10edcac	main.main.func2+0x28c	/app/main.go:328
+
+1 @ 0x47fe2e 0x45ce97 0x8dae06 0x487ba1
+#	0x8dae05	google.golang.org/grpc/internal/transport.(*http2Client).keepalive+0x185	/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:1785
+
+1 @ 0x47fe2e 0x45ce97 0x8eafa7 0x8eaa05 0x8ebbe5 0x8eb769 0x95a6fb 0x95b6d7 0x95cacb 0x96fd99 0x96eeff 0x96d98f 0x96ecd5 0x10cc0ea 0x10d0fde 0xaa7d96 0xaa791d 0x10d0c11 0x10cb885 0x10cb425 0x10ccefd 0x10e68a9 0x10e6c74 0x10ebaad 0x10ed9e5 0x10ec216 0x487ba1
+#	0x8eafa6	google.golang.org/grpc/internal/transport.(*recvBufferReader).readMessageHeaderClient+0xa6	/app/vendor/google.golang.org/grpc/internal/transport/transport.go:204
+#	0x8eaa04	google.golang.org/grpc/internal/transport.(*recvBufferReader).ReadMessageHeader+0x44		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:150
+#	0x8ebbe4	google.golang.org/grpc/internal/transport.(*transportReader).ReadMessageHeader+0x24		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:463
+#	0x8eb768	google.golang.org/grpc/internal/transport.(*Stream).ReadMessageHeader+0xa8			/app/vendor/google.golang.org/grpc/internal/transport/transport.go:372
+#	0x95a6fa	google.golang.org/grpc.(*parser).recvMsg+0x3a							/app/vendor/google.golang.org/grpc/rpc_util.go:786
+#	0x95b6d6	google.golang.org/grpc.recvAndDecompress+0x96							/app/vendor/google.golang.org/grpc/rpc_util.go:945
+#	0x95caca	google.golang.org/grpc.recv+0xaa								/app/vendor/google.golang.org/grpc/rpc_util.go:1054
+#	0x96fd98	google.golang.org/grpc.(*csAttempt).recvMsg+0x358						/app/vendor/google.golang.org/grpc/stream.go:1174
+#	0x96eefe	google.golang.org/grpc.(*clientStream).RecvMsg.func1+0x1e					/app/vendor/google.golang.org/grpc/stream.go:1021
+#	0x96d98e	google.golang.org/grpc.(*clientStream).withRetry+0x3ce						/app/vendor/google.golang.org/grpc/stream.go:825
+#	0x96ecd4	google.golang.org/grpc.(*clientStream).RecvMsg+0x154						/app/vendor/google.golang.org/grpc/stream.go:1020
+#	0x10cc0e9	cloud.google.com/go/bigtable.(*Table).readRows.func1+0x7e9					/app/vendor/cloud.google.com/go/bigtable/bigtable.go:262
+#	0x10d0fdd	cloud.google.com/go/bigtable.gaxInvokeWithRecorder.func1+0x35d					/app/vendor/cloud.google.com/go/bigtable/bigtable.go:1148
+#	0xaa7d95	github.com/googleapis/gax-go/v2.invoke+0x315							/app/vendor/github.com/googleapis/gax-go/v2/invoke.go:108
+#	0xaa791c	github.com/googleapis/gax-go/v2.Invoke+0xdc							/app/vendor/github.com/googleapis/gax-go/v2/invoke.go:61
+#	0x10d0c10	cloud.google.com/go/bigtable.gaxInvokeWithRecorder+0x190					/app/vendor/cloud.google.com/go/bigtable/bigtable.go:1155
+#	0x10cb884	cloud.google.com/go/bigtable.(*Table).readRows+0x284						/app/vendor/cloud.google.com/go/bigtable/bigtable.go:211
+#	0x10cb424	cloud.google.com/go/bigtable.(*Table).ReadRows+0x204						/app/vendor/cloud.google.com/go/bigtable/bigtable.go:186
+#	0x10ccefc	cloud.google.com/go/bigtable.(*Table).readRowClassic+0x19c					/app/vendor/cloud.google.com/go/bigtable/bigtable.go:366
+#	0x10e68a8	cloud.google.com/go/bigtable.(*tableImpl).ReadRow+0x28						/app/vendor/cloud.google.com/go/bigtable/table.go:76
+#	0x10e6c73	cloud.google.com/go/bigtable.(*TableShim).ReadRow+0x113						/app/vendor/cloud.google.com/go/bigtable/table_shim.go:67
+#	0x10ebaac	main.readRow+0x14c										/app/main.go:68
+#	0x10ed9e4	main.main.func3+0x24										/app/main.go:351
+#	0x10ec215	main.runDriver.func2+0x95									/app/main.go:150
+
+1 @ 0x47fe2e 0x45ce97 0x8eafa7 0x8eaa05 0x8ebbe5 0x8eb769 0x95a6fb 0x95b6d7 0x95cacb 0x96fd99 0x96eeff 0x96d98f 0x96ecd5 0xfc89c6 0xfb781b 0xfb7198 0xfb608e 0xdc7277 0xfb5eb1 0x487ba1
+#	0x8eafa6	google.golang.org/grpc/internal/transport.(*recvBufferReader).readMessageHeaderClient+0xa6	/app/vendor/google.golang.org/grpc/internal/transport/transport.go:204
+#	0x8eaa04	google.golang.org/grpc/internal/transport.(*recvBufferReader).ReadMessageHeader+0x44		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:150
+#	0x8ebbe4	google.golang.org/grpc/internal/transport.(*transportReader).ReadMessageHeader+0x24		/app/vendor/google.golang.org/grpc/internal/transport/transport.go:463
+#	0x8eb768	google.golang.org/grpc/internal/transport.(*Stream).ReadMessageHeader+0xa8			/app/vendor/google.golang.org/grpc/internal/transport/transport.go:372
+#	0x95a6fa	google.golang.org/grpc.(*parser).recvMsg+0x3a							/app/vendor/google.golang.org/grpc/rpc_util.go:786
+#	0x95b6d6	google.golang.org/grpc.recvAndDecompress+0x96							/app/vendor/google.golang.org/grpc/rpc_util.go:945
+#	0x95caca	google.golang.org/grpc.recv+0xaa								/app/vendor/google.golang.org/grpc/rpc_util.go:1054
+#	0x96fd98	google.golang.org/grpc.(*csAttempt).recvMsg+0x358						/app/vendor/google.golang.org/grpc/stream.go:1174
+#	0x96eefe	google.golang.org/grpc.(*clientStream).RecvMsg.func1+0x1e					/app/vendor/google.golang.org/grpc/stream.go:1021
+#	0x96d98e	google.golang.org/grpc.(*clientStream).withRetry+0x3ce						/app/vendor/google.golang.org/grpc/stream.go:825
+#	0x96ecd4	google.golang.org/grpc.(*clientStream).RecvMsg+0x154						/app/vendor/google.golang.org/grpc/stream.go:1020
+#	0xfc89c5	google.golang.org/grpc/internal/xds/clients/grpctransport.(*stream).Recv+0x45			/app/vendor/google.golang.org/grpc/internal/xds/clients/grpctransport/grpc_transport.go:208
+#	0xfb781a	google.golang.org/grpc/internal/xds/clients/xdsclient.(*adsStreamImpl).recvMessage+0x3a		/app/vendor/google.golang.org/grpc/internal/xds/clients/xdsclient/ads_stream.go:488
+#	0xfb7197	google.golang.org/grpc/internal/xds/clients/xdsclient.(*adsStreamImpl).recv+0x77		/app/vendor/google.golang.org/grpc/internal/xds/clients/xdsclient/ads_stream.go:446
+#	0xfb608d	google.golang.org/grpc/internal/xds/clients/xdsclient.(*adsStreamImpl).runner.func1+0x18d	/app/vendor/google.golang.org/grpc/internal/xds/clients/xdsclient/ads_stream.go:273
+#	0xdc7276	google.golang.org/grpc/internal/xds/clients/internal/backoff.RunF+0xd6				/app/vendor/google.golang.org/grpc/internal/xds/clients/internal/backoff/backoff.go:112
+#	0xfb5eb0	google.golang.org/grpc/internal/xds/clients/xdsclient.(*adsStreamImpl).runner+0xf0		/app/vendor/google.golang.org/grpc/internal/xds/clients/xdsclient/ads_stream.go:278
+
+1 @ 0x47fe2e 0x45ce97 0xd629d7 0x487ba1
+#	0xd629d6	cloud.google.com/go/bigtable/internal/transport.(*ClientConfigurationManager).pollingLoop+0x1b6	/app/vendor/cloud.google.com/go/bigtable/internal/transport/client_configuration_manager.go:458
+
+1 @ 0x47fe2e 0x45ce97 0xd8b8ec 0xd8affb 0xd7cf6c 0xd97bfc 0xd97e3c 0xd97707 0xd9669b 0x10e2b93 0x10e744c 0x10e7d42 0x10e72c5 0x10eb90e 0x10ed985 0x10ec216 0x487ba1
+#	0xd8b8eb	cloud.google.com/go/bigtable/internal/transport.(*Session).awaitInvokeResult+0xcb	/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_vrpc.go:235
+#	0xd8affa	cloud.google.com/go/bigtable/internal/transport.(*Session).Invoke+0x65a			/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_vrpc.go:166
+#	0xd7cf6b	cloud.google.com/go/bigtable/internal/transport.(*SessionPoolImpl).Invoke+0x22b		/app/vendor/cloud.google.com/go/bigtable/internal/transport/session_pool.go:556
+#	0xd97bfb	cloud.google.com/go/bigtable/internal/session.dispatch[...].func1+0xdb			/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:259
+#	0xd97e3b	cloud.google.com/go/bigtable/internal/session.dispatch[...].RetryingVRpc.func2+0x11b	/app/vendor/cloud.google.com/go/bigtable/internal/transport/retrying.go:74
+#	0xd97706	cloud.google.com/go/bigtable/internal/session.dispatch[...]+0x346			/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:270
+#	0xd9669a	cloud.google.com/go/bigtable/internal/session.(*sessionTable).MutateRow+0x1ba		/app/vendor/cloud.google.com/go/bigtable/internal/session/table.go:192
+#	0x10e2b92	cloud.google.com/go/bigtable.(*sessionTableHandle).MutateRow+0x52			/app/vendor/cloud.google.com/go/bigtable/session_table_cache.go:135
+#	0x10e744b	cloud.google.com/go/bigtable.(*TableShim).Apply.func1+0x2b				/app/vendor/cloud.google.com/go/bigtable/table_shim.go:119
+#	0x10e7d41	cloud.google.com/go/bigtable/internal/session.InterceptUnimplemented[...]+0x21		/app/vendor/cloud.google.com/go/bigtable/internal/session/unimplemented_interceptor.go:97
+#	0x10e72c4	cloud.google.com/go/bigtable.(*TableShim).Apply+0x244					/app/vendor/cloud.google.com/go/bigtable/table_shim.go:117
+#	0x10eb90d	main.mutateRow+0x38d									/app/main.go:63
+#	0x10ed984	main.main.func4+0x24									/app/main.go:354
+#	0x10ec215	main.runDriver.func2+0x95								/app/main.go:150
+
+1 @ 0x47fe2e 0x45ce97 0xdc983d 0xdc9652 0x8f3837 0xdc9313 0x487ba1
+#	0xdc983c	google.golang.org/grpc/internal/xds/clients/lrsclient.(*streamImpl).sendLoads+0x11c	/app/vendor/google.golang.org/grpc/internal/xds/clients/lrsclient/lrs_stream.go:154
+#	0xdc9651	google.golang.org/grpc/internal/xds/clients/lrsclient.(*streamImpl).runner.func1+0x2d1	/app/vendor/google.golang.org/grpc/internal/xds/clients/lrsclient/lrs_stream.go:141
+#	0x8f3836	google.golang.org/grpc/internal/backoff.RunF+0xd6					/app/vendor/google.golang.org/grpc/internal/backoff/backoff.go:97
+#	0xdc9312	google.golang.org/grpc/internal/xds/clients/lrsclient.(*streamImpl).runner+0x172	/app/vendor/google.golang.org/grpc/internal/xds/clients/lrsclient/lrs_stream.go:144
+
+1 @ 0x47fe2e 0x45ce97 0xfb6250 0x487ba1
+#	0xfb624f	google.golang.org/grpc/internal/xds/clients/xdsclient.(*adsStreamImpl).send+0xcf	/app/vendor/google.golang.org/grpc/internal/xds/clients/xdsclient/ads_stream.go:289
+
+1 @ 0x47fe2e 0x45dfbd 0x45df94 0x48144e 0x4937e5 0x10ed905 0x449ffd 0x487ba1
+#	0x48144d	sync.runtime_SemacquireWaitGroup+0x2d	/usr/local/go/src/runtime/sema.go:114
+#	0x4937e4	sync.(*WaitGroup).Wait+0x84		/usr/local/go/src/sync/waitgroup.go:206
+#	0x10ed904	main.main+0xa64				/app/main.go:357
+#	0x449ffc	runtime.main+0x29c			/usr/local/go/src/runtime/proc.go:285
+
+1 @ 0x487ba1
+
+1 @ 0x4a4fa5 0x4a35fb 0x5056f4 0x5056ec 0x5054fc 0x5b3b65 0x5c3685 0xab6abc 0x8e7356 0x8e723c 0x8c6625 0x8d0152 0x487ba1
+#	0x4a4fa4	syscall.Syscall+0x24								/usr/local/go/src/syscall/syscall_linux.go:74
+#	0x4a35fa	syscall.write+0x3a								/usr/local/go/src/syscall/zsyscall_linux_amd64.go:964
+#	0x5056f3	syscall.Write+0x393								/usr/local/go/src/syscall/syscall_unix.go:211
+#	0x5056eb	internal/poll.ignoringEINTRIO+0x38b						/usr/local/go/src/internal/poll/fd_unix.go:738
+#	0x5054fb	internal/poll.(*FD).Write+0x19b							/usr/local/go/src/internal/poll/fd_unix.go:374
+#	0x5b3b64	net.(*netFD).Write+0x24								/usr/local/go/src/net/fd_posix.go:109
+#	0x5c3684	net.(*conn).Write+0x44								/usr/local/go/src/net/net.go:208
+#	0xab6abb	google.golang.org/grpc/credentials/alts/internal/conn.(*conn).Write+0x25b	/app/vendor/google.golang.org/grpc/credentials/alts/internal/conn/record.go:357
+#	0x8e7355	google.golang.org/grpc/internal/transport.(*bufWriter).flushKeepBuffer+0x55	/app/vendor/google.golang.org/grpc/internal/transport/http_util.go:369
+#	0x8e723b	google.golang.org/grpc/internal/transport.(*bufWriter).Flush+0x1b		/app/vendor/google.golang.org/grpc/internal/transport/http_util.go:352
+#	0x8c6624	google.golang.org/grpc/internal/transport.(*loopyWriter).run+0x64		/app/vendor/google.golang.org/grpc/internal/transport/controlbuf.go:635
+#	0x8d0151	google.golang.org/grpc/internal/transport.NewHTTP2Client.func6+0xd1		/app/vendor/google.golang.org/grpc/internal/transport/http2_client.go:478
+
